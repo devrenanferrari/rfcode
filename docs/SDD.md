@@ -91,7 +91,7 @@ Uma mudança só é aceita se cumprir todos os itens abaixo:
    - **comandos:** só `npm test`, `node --test …`, `node --check …` e `git status/diff/log/show`.
 4. No fim, o runner roda os testes e confere os portões da seção 4.
    - Se tudo passar, faz commit e marca `[x]`.
-   - Se algo falhar, descarta a mudança e guarda o motivo. A segunda tentativa recebe esse motivo e usa um modelo mais forte (`--fallback-model`, padrão `z-ai/glm-5.3`). Depois de 2 falhas, a tarefa é marcada como `[!]` (bloqueada para revisão humana).
+   - Se algo falhar, descarta a mudança e guarda o motivo. A segunda tentativa recebe esse motivo e pode usar outro modelo (`--fallback-model`, ex.: `z-ai/glm-5.3`; no plano grátis ele costuma dar timeout). Depois de 2 falhas, a tarefa é marcada como `[!]` (bloqueada para revisão humana).
 5. **Nunca** faz push nem merge. Para revisar: `git log main..self-improve`. Para aceitar: `git merge self-improve`.
 6. O log de cada execução fica em `.self-improve/log.md`.
 

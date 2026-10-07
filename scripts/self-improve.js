@@ -49,7 +49,7 @@ function parseArgs() {
     iterations: Math.max(1, parseInt(get('--iterations', '3'), 10)),
     model: get('--model', null),
     // na 2ª tentativa de uma tarefa usa um modelo mais forte
-    fallbackModel: get('--fallback-model', 'z-ai/glm-5.3'),
+    fallbackModel: get('--fallback-model', null), // ex.: z-ai/glm-5.3 (mais forte, mas lento no plano grátis)
     task: get('--task', null),
   };
 }
