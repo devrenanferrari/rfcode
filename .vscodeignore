@@ -1,3 +1,6 @@
 **/*.vsix
 .vscode/**
 test/**
+.worktrees/**
+.self-improve/**
+rfcode-demo.png
