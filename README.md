@@ -61,7 +61,7 @@ Se existir `RFCODE.md`, `CLAUDE.md` ou `AGENTS.md` na pasta, o conteúdo entra c
 
 ## SDD e auto-melhoria
 
-O [docs/SDD.md](docs/SDD.md) é o documento de design: visão, arquitetura, regras de qualidade e o **backlog** de melhorias.
+O `docs/SDD.md` é o documento de design: visão, arquitetura, regras de qualidade e o **backlog** de melhorias.
 O próprio rfcode implementa esse backlog num loop:
 
 ```powershell
