@@ -176,6 +176,7 @@ Regras:
 - Comandos permitidos: npm test, node --test <arquivos>, node --check <arquivo>, git status/diff/log/show.
 - Rode npm test antes de terminar e corrija até passar.
 - Não use dependências externas.
+- Em repositórios git temporários de teste, configure a identidade antes de commitar: git config user.name "rfcode-test" e git config user.email "test@rfcode.local" (a máquina pode não ter identidade global).
 - No Windows: espere processos filhos terminarem antes de apagar pastas temporárias (use execFileSync ou await) e apague com fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5 }).`,
   });
 
