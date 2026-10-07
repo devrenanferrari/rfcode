@@ -45,7 +45,13 @@ function saveState(s) { fs.mkdirSync(LOG_DIR, { recursive: true }); fs.writeFile
 function parseArgs() {
   const a = process.argv.slice(2);
   const get = (flag, def) => { const i = a.indexOf(flag); return i >= 0 && a[i + 1] ? a[i + 1] : def; };
-  return { iterations: Math.max(1, parseInt(get('--iterations', '3'), 10)), model: get('--model', null), task: get('--task', null) };
+  return {
+    iterations: Math.max(1, parseInt(get('--iterations', '3'), 10)),
+    model: get('--model', null),
+    // na 2ª tentativa de uma tarefa usa um modelo mais forte
+    fallbackModel: get('--fallback-model', 'z-ai/glm-5.3'),
+    task: get('--task', null),
+  };
 }
 
 // Roda npm test e devolve { ok, pass, fail, output }
@@ -144,12 +150,14 @@ function gatesCheck(before) {
 }
 
 // ---------- uma iteração ----------
-async function iteration(apiKey, model, forcedTask, state) {
+async function iteration(apiKey, baseModel, fallbackModel, forcedTask, state) {
   const sdd = fs.readFileSync(path.join(WT, SDD), 'utf8');
   const tasks = readTasks(sdd);
   const task = forcedTask ? tasks.find((t) => t.id === forcedTask) : tasks.find((t) => t.state === ' ');
   if (!task) return 'fim';
 
+  const previous = state.lastFailure && state.lastFailure[task.id];
+  const model = previous && fallbackModel ? fallbackModel : baseModel;
   const before = runTests(WT);
   if (!before.ok) { log(c.red('Os testes já estão falhando na worktree; abortando.')); return 'erro'; }
 
@@ -167,12 +175,16 @@ Regras:
 - Arquivos protegidos (NÃO edite): ${PROTECTED.join(', ')}.
 - Comandos permitidos: npm test, node --test <arquivos>, node --check <arquivo>, git status/diff/log/show.
 - Rode npm test antes de terminar e corrija até passar.
-- Não use dependências externas.`,
+- Não use dependências externas.
+- No Windows: espere processos filhos terminarem antes de apagar pastas temporárias (use execFileSync ou await) e apague com fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5 }).`,
   });
 
   const timer = setTimeout(() => { log(c.yellow('Tempo da iteração esgotado; interrompendo.')); agent.abort(); }, ITERATION_TIMEOUT_MS);
   let finalText = '';
-  await agent.send(`Implemente a tarefa do SDD abaixo.\n\n${task.body}`, {
+  const retryNote = previous
+    ? `\n\nATENÇÃO: uma tentativa anterior desta tarefa foi REJEITADA. Motivo:\n${previous}\nEvite repetir esse erro.`
+    : '';
+  await agent.send(`Implemente a tarefa do SDD abaixo.\n\n${task.body}${retryNote}`, {
     approve: async (info) => {
       const d = policy(info);
       log(`- ${info.label}${d === 'yes' ? '' : c.red(' ✗ negado: ' + d.deny)}`);
@@ -192,6 +204,7 @@ Regras:
     git(['add', '-A']);
     git(['commit', '-q', '-m', `feat(${task.id}): ${task.title} [self-improve]\n\nArquivos: ${g.changed.join(', ')}\nTestes: ${g.tests.pass} passando.`]);
     delete state.failures[task.id];
+    if (state.lastFailure) delete state.lastFailure[task.id];
     log(c.green(`✔ ${task.id} aceita: ${g.tests.pass} testes passando, commit ${git(['rev-parse', '--short', 'HEAD'])}`));
     return 'ok';
   }
@@ -200,6 +213,8 @@ Regras:
   git(['reset', '--hard', 'HEAD']);
   git(['clean', '-fd']);
   state.failures[task.id] = (state.failures[task.id] || 0) + 1;
+  state.lastFailure = state.lastFailure || {};
+  state.lastFailure[task.id] = g.reason.slice(0, 2000);
   if (state.failures[task.id] >= MAX_FAILURES) {
     markTask(task.id, '!', `Bloqueada pelo loop após ${MAX_FAILURES} tentativas. Último motivo: ${g.reason.split('\n')[0]}`);
     git(['commit', '-q', '-am', `chore(${task.id}): marcada como bloqueada [self-improve]`]);
@@ -224,7 +239,7 @@ async function main() {
   process.on('SIGINT', () => { stop = true; log(c.yellow('Interrompido pelo usuário; terminando após a iteração atual.')); });
 
   for (let i = 0; i < opts.iterations && !stop; i++) {
-    const r = await iteration(apiKey, model, i === 0 ? opts.task : null, state);
+    const r = await iteration(apiKey, model, opts.fallbackModel, i === 0 ? opts.task : null, state);
     saveState(state);
     if (r === 'fim') { log(c.green('Backlog concluído: não há tarefas pendentes.')); break; }
     if (r === 'erro') break;
