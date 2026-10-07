@@ -170,9 +170,17 @@ Uso:
   rfcode -p "tarefa"     executa uma tarefa e sai (aprovação automática)
   rfcode --key           pede uma nova API key da NVIDIA
   rfcode --model <nome>  usa outro modelo
+  rfcode --self-improve [--iterations N]  roda o loop de auto-melhoria do SDD
 
 API key: ${CONFIG_FILE} (ou variável de ambiente NVIDIA_API_KEY)`);
     process.exit(0);
+  }
+
+  if (argv[0] === '--self-improve') {
+    // repassa para o loop de auto-melhoria (scripts/self-improve.js)
+    const { spawnSync } = require('child_process');
+    const r = spawnSync(process.execPath, [path.join(__dirname, '..', 'scripts', 'self-improve.js'), ...argv.slice(1)], { stdio: 'inherit' });
+    process.exit(r.status ?? 1);
   }
 
   let model = cfg.model || DEFAULT_MODEL;

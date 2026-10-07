@@ -112,6 +112,17 @@ function ensureWorktree() {
   // descarta restos de uma execução interrompida
   git(['reset', '--hard', 'HEAD']);
   git(['clean', '-fd']);
+  // traz novidades de main (tarefas novas no SDD, correções feitas à mão)
+  try {
+    const behind = git(['rev-list', '--count', `${BRANCH}..main`]);
+    if (behind !== '0') {
+      git(['merge', '--no-edit', '-q', 'main']);
+      log(c.dim(`Branch ${BRANCH} atualizada com ${behind} commit(s) de main.`));
+    }
+  } catch (e) {
+    try { git(['merge', '--abort']); } catch {}
+    log(c.yellow(`Não foi possível juntar main em ${BRANCH} (conflito). Resolva à mão: cd .worktrees/self-improve && git merge main`));
+  }
 }
 
 function gatesCheck(before) {

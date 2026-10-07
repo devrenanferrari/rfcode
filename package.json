@@ -67,6 +67,10 @@
       {
         "command": "rfcode.askSelection",
         "title": "rfcode: Perguntar sobre a seleção"
+      },
+      {
+        "command": "rfcode.selfImprove",
+        "title": "rfcode: Auto-melhoria (loop do SDD)"
       }
     ],
     "menus": {
@@ -97,6 +101,11 @@
           "type": "boolean",
           "default": false,
           "description": "Executar edições, comandos e controle do PC sem pedir confirmação."
+        },
+        "rfcode.repoPath": {
+          "type": "string",
+          "default": "C:/Users/user/Desktop/Projetos/rfcode",
+          "description": "Repositório git do rfcode usado pelo loop de auto-melhoria (precisa conter scripts/self-improve.js e docs/SDD.md)."
         }
       }
     }

@@ -59,6 +59,28 @@ Programas Win32 antigos (como o Bloco de Notas clássico) expõem poucos element
 
 Se existir `RFCODE.md`, `CLAUDE.md` ou `AGENTS.md` na pasta, o conteúdo entra como instruções do projeto.
 
+## SDD e auto-melhoria
+
+O [docs/SDD.md](docs/SDD.md) é o documento de design: visão, arquitetura, regras de qualidade e o **backlog** de melhorias.
+O próprio rfcode implementa esse backlog num loop:
+
+```powershell
+npm run self-improve -- --iterations 3            # ou: rfcode --self-improve --iterations 3
+npm run self-improve -- --task T05 --model z-ai/glm-5.3
+```
+No VS Code, use `Ctrl+Shift+P` → **rfcode: Auto-melhoria (loop do SDD)**.
+
+Como o loop funciona:
+- trabalha numa git worktree separada (branch `self-improve`), então a versão instalada não é afetada;
+- usa só as ferramentas de código, sem controle do PC;
+- só pode rodar testes e comandos git de leitura;
+- não pode editar os testes de base, o SDD nem o próprio script;
+- uma tarefa só vira commit se `npm test` passar e o número de testes não diminuir;
+- uma tarefa que falha duas vezes é marcada `[!]` para revisão humana;
+- **nunca faz push nem merge.** Para revisar: `git log --stat main..self-improve`. Para aceitar: `git merge self-improve`.
+
+O log de cada rodada fica em `.self-improve/log.md`. Para acrescentar tarefas, edite a seção 7 do SDD no `main` e faça commit. A cada rodada, o loop junta as novidades de `main` na branch `self-improve`.
+
 ## Modelos testados (com tool calling)
 
 - `nvidia/nemotron-3-super-120b-a12b`: padrão, rápido

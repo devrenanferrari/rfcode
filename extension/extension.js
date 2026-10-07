@@ -214,6 +214,17 @@ function activate(context) {
       term.show();
       term.sendText(`node "${path.join(context.extensionPath, 'bin', 'rfcode.js')}"`);
     }),
+    vscode.commands.registerCommand('rfcode.selfImprove', async () => {
+      const n = await vscode.window.showInputBox({
+        title: 'rfcode: auto-melhoria', prompt: 'Quantas tarefas do SDD tentar nesta rodada?', value: '3', ignoreFocusOut: true,
+        validateInput: (v) => (/^\d+$/.test(v) && +v > 0 ? null : 'Informe um número'),
+      });
+      if (!n) return;
+      const repo = settings().get('repoPath') || context.extensionPath;
+      const term = vscode.window.createTerminal({ name: 'rfcode: auto-melhoria', cwd: repo });
+      term.show();
+      term.sendText(`node scripts/self-improve.js --iterations ${n}`);
+    }),
     vscode.commands.registerCommand('rfcode.askSelection', async () => {
       const ed = vscode.window.activeTextEditor;
       if (!ed) return;
