@@ -1,0 +1,109 @@
+{
+  "name": "rfcode",
+  "displayName": "rfcode",
+  "description": "Agente de código e controle do PC (estilo Claude Code) usando os modelos gratuitos da NVIDIA",
+  "version": "1.1.0",
+  "publisher": "renan",
+  "license": "MIT",
+  "icon": "media/logo.png",
+  "engines": {
+    "vscode": "^1.85.0",
+    "node": ">=18"
+  },
+  "categories": [
+    "AI",
+    "Chat",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "nvidia",
+    "agent",
+    "ai",
+    "chat",
+    "nemotron"
+  ],
+  "main": "./extension/extension.js",
+  "bin": {
+    "rfcode": "bin/rfcode.js"
+  },
+  "activationEvents": [],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "rfcode",
+          "title": "rfcode",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "rfcode": [
+        {
+          "type": "webview",
+          "id": "rfcode.chat",
+          "name": "Chat"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "rfcode.open",
+        "title": "rfcode: Abrir chat"
+      },
+      {
+        "command": "rfcode.newChat",
+        "title": "rfcode: Nova conversa",
+        "icon": "$(add)"
+      },
+      {
+        "command": "rfcode.setApiKey",
+        "title": "rfcode: Configurar API key da NVIDIA"
+      },
+      {
+        "command": "rfcode.openTerminal",
+        "title": "rfcode: Abrir no terminal"
+      },
+      {
+        "command": "rfcode.askSelection",
+        "title": "rfcode: Perguntar sobre a seleção"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "rfcode.askSelection",
+          "when": "editorHasSelection",
+          "group": "navigation@99"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "rfcode.newChat",
+          "when": "view == rfcode.chat",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "rfcode",
+      "properties": {
+        "rfcode.model": {
+          "type": "string",
+          "default": "nvidia/nemotron-3-super-120b-a12b",
+          "description": "Modelo da NVIDIA (build.nvidia.com) usado pelo agente. Precisa suportar tool calling."
+        },
+        "rfcode.autoApprove": {
+          "type": "boolean",
+          "default": false,
+          "description": "Executar edições, comandos e controle do PC sem pedir confirmação."
+        }
+      }
+    }
+  },
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "self-improve": "node scripts/self-improve.js"
+  }
+}

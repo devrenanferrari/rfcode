@@ -1,0 +1,5 @@
+node_modules/
+*.vsix
+rfcode-demo.png
+.worktrees/
+.self-improve/
