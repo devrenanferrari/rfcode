@@ -42,7 +42,7 @@ Um bom agente de código não é só um modelo com ferramentas. É um **método 
 | Rodar comandos no shell | ✅ `run_command` (PowerShell/bash) | n/a |
 | Comandos em segundo plano (servidores, builds longos) | ⬜ | T20 |
 | Lista de tarefas (TodoWrite) | ✅ `update_plan` | n/a |
-| Buscar páginas web | ⬜ | T06 |
+| Buscar páginas web | ✅ `web_fetch`, com aprovação (loop, revisado) | T06 |
 | Subagentes para pesquisar em paralelo | ⬜ | T24 |
 | Perguntar ao usuário com opções | ⬜ | T25 |
 | Ferramentas git | ✅ `git_status`, `git_diff`, `git_log`, `git_commit` | n/a |
@@ -55,7 +55,7 @@ Um bom agente de código não é só um modelo com ferramentas. É um **método 
 | Arquivo de instruções do projeto (CLAUDE.md) | ✅ RFCODE.md / CLAUDE.md / AGENTS.md na raiz | n/a |
 | Memória em camadas (usuário + projeto + subpastas) e `/memory` | ⬜ | T21 |
 | `/init`, que gera o arquivo de instruções | ⬜ (prompt pronto em `lib/prompts.js`) | T14 |
-| `@arquivo` na mensagem | ⬜ | T05 |
+| `@arquivo` na mensagem | ✅ (loop, revisado) | T05 |
 | Compactação automática do contexto e `/compact` | ⬜ | T08 |
 | Sessões salvas, `/resume` e `--continue` | ⬜ | T07 |
 
