@@ -2,6 +2,8 @@
 (function () {
   'use strict';
   const $ = (id) => document.getElementById(id);
+  // encurta caminhos absolutos da worktree (C:\...\.worktrees\self-improve\lib\x.js → lib/x.js)
+  const short = (s) => String(s ?? '').replace(/[A-Za-z]:[\\/][^\s"'`]*?[\\/]\.worktrees[\\/]self-improve(?:[\\/]|(?=[\s)"'`]|$))/g, '').replace(/(lib|test|bin|docs|scripts|media|extension|dashboard)\\/g, '$1/');
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const PHASES = [
     ['preparando', 'Preparar'], ['entender', 'Entender'], ['implementar', 'Implementar'],
@@ -240,7 +242,7 @@
           const res = f.result;
           const cls = res && !res.ok ? 'err' : '';
           const showReason = e.reason && !r.feed.some((x) => x.kind === 'say' && x.e.text === e.reason);
-          return li(e.name, cls, esc(e.label), showReason ? esc(e.reason.slice(0, 300)) : '', res ? esc(res.summary) : '<span class="faint">…</span>', e.ts);
+          return li(e.name, cls, esc(short(e.label)), showReason ? esc(e.reason.slice(0, 300)) : '', res ? esc(short(res.summary)) : '<span class="faint">…</span>', e.ts);
         }
         case 'denied': return li('denied', 'denied', `Negado: ${esc(e.label)}`, esc(e.reason), '', e.ts);
         case 'tests': return li('tests', e.fail ? 'err' : '', `Testes: ${e.pass} passando, ${e.fail} falhando (antes: ${e.before})`, '', esc((e.failures || []).map((x) => `✗ ${x.name}: ${x.error}`).join('\n')), e.ts);

@@ -85,3 +85,12 @@ test('lembrete de plano aparece depois de N ações sem update_plan', async () =
   assert.ok(!/lembrete do sistema/.test(tools[1].content), 'ainda não');
   assert.match(tools[2].content, /lembrete do sistema/);
 });
+
+test('lembrete cobra a criação do plano quando nenhum foi declarado', async () => {
+  const queue = [sse(toolCall('list_dir', { path: '.' })), sse(toolCall('list_dir', { path: '.' })), sse([{ choices: [{ delta: { content: 'fim' } }] }])];
+  global.fetch = async () => queue.shift();
+  const a = new Agent({ apiKey: 'x', cwd: os.tmpdir(), planReminderEvery: 2 });
+  await a.send('faça', {});
+  const tools = a.messages.filter((m) => m.role === 'tool');
+  assert.match(tools[1].content, /sem declarar um plano/);
+});
