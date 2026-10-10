@@ -3,7 +3,7 @@
   'use strict';
   const $ = (id) => document.getElementById(id);
   // encurta caminhos absolutos da worktree (C:\...\.worktrees\self-improve\lib\x.js → lib/x.js)
-  const short = (s) => String(s ?? '').replace(/[A-Za-z]:[\\/][^\s"'`]*?[\\/]\.worktrees[\\/]self-improve(?:[\\/]|(?=[\s)"'`]|$))/g, '').replace(/(lib|test|bin|docs|scripts|media|extension|dashboard)\\/g, '$1/');
+  const short = (s) => String(s ?? '').replace(/[A-Za-z]:[\\/][^\s"'`]*?[\\/]\.worktrees[\\/]self-improve(?:[\\/]|(?=[\s)"'`]|$))/g, '').replace(/(lib|test|bin|docs|scripts|media|extension|dashboard)\\/g, '$1/').replace(/\(\)$/, '(.)');
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const PHASES = [
     ['preparando', 'Preparar'], ['entender', 'Entender'], ['implementar', 'Implementar'],
