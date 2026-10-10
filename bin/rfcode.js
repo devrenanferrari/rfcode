@@ -125,6 +125,8 @@ ${c.bold('Comandos:')}
   /auto             liga/desliga aprovação automática de edições e comandos
   /think            mostra/oculta o raciocínio do modelo
   /cd <dir>         muda o diretório de trabalho
+  /sessions         lista as 10 últimas sessões salvas
+  /resume <n>       carrega a n-ésima sessão da lista (começando em 1)
   /exit             sair
 ${c.dim('Dica: termine uma linha com \\ para continuar escrevendo na próxima. Ctrl+C interrompe a resposta.')}`);
       return;
@@ -160,6 +162,48 @@ ${c.dim('Dica: termine uma linha com \\ para continuar escrevendo na próxima. C
         agent.cwd = process.cwd();
         console.log(c.dim(agent.cwd));
       } catch (e) { console.log(c.red(e.message)); }
+      return;
+    case 'sessions':
+      const sessions = agent.sessionManager.list();
+      if (sessions.length === 0) {
+        console.log(c.dim('Nenhuma sessão salva.'));
+      } else {
+        console.log(c.bold('Sessões salvas (mais recente primeiro):'));
+        const limit = Math.min(10, sessions.length);
+        for (let i = 0; i < limit; i++) {
+          const sessionPath = sessions[i];
+          const sessionName = path.basename(sessionPath);
+          console.log(`  ${i + 1}. ${sessionName}`);
+        }
+        if (sessions.length > 10) {
+          console.log(c.dim(`  ... e mais ${sessions.length - 10} sessões`));
+        }
+      }
+      return;
+    case 'resume':
+      if (!arg) {
+        console.log(c.red('Uso: /resume <n> (número da sessão na lista)'));
+        return;
+      }
+      const index = parseInt(arg, 10);
+      if (isNaN(index) || index < 1) {
+        console.log(c.red('Por favor, informe um número válido.'));
+        return;
+      }
+      const sessionsList = agent.sessionManager.list();
+      const sessionIndex = index - 1;
+      if (sessionIndex < 0 || sessionIndex >= sessionsList.length) {
+        console.log(c.red(`Sessão ${index} não encontrada. Lista tem ${sessionsList.length} sessões.`));
+        return;
+      }
+      const sessionPath = sessionsList[sessionIndex];
+      const messages = agent.sessionManager.load(sessionPath);
+      if (messages === null) {
+        console.log(c.red('Falha ao carregar a sessão.'));
+        return;
+      }
+      agent.messages = messages;
+      console.log(c.green(`Sessão ${index} carregada com ${messages.length} mensagens.`));
       return;
     case 'exit': case 'quit': case 'sair':
       rl.close(); process.exit(0);
