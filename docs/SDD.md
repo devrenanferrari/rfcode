@@ -158,11 +158,13 @@ Crie `lib/checkpoints.js`. Antes de cada `write_file` e `edit_file`, o Agent gua
 Envie `stream_options: { include_usage: true }` na chamada e leia `usage` do último chunk. Acumule em `agent.usage = { prompt, completion, total }` e chame o novo hook opcional `onUsage(usage)`. A CLI mostra o total depois de cada resposta (texto cinza).
 **Aceite:** teste com `fetch` simulado que manda um chunk com `usage` e confere `agent.usage`.
 
-### [ ] T05: Menções @arquivo
+### [x] T05: Menções @arquivo
+> Feito pelo loop em 2026-10-10 (nvidia/nemotron-3-super-120b-a12b).
 Crie `lib/mentions.js` com `expandMentions(texto, cwd)`. Para cada `@caminho` de arquivo existente, a função anexa o conteúdo ao fim da mensagem num bloco com o nome do arquivo (limite de 20 000 caracteres por arquivo). Use essa função em `Agent.send` antes de enviar ao modelo.
 **Aceite:** teste com arquivo temporário: o texto expandido contém o conteúdo, e `@inexistente` fica inalterado.
 
-### [ ] T06: Ferramenta web_fetch
+### [x] T06: Ferramenta web_fetch
+> Feito pelo loop em 2026-10-10 (nvidia/nemotron-3-super-120b-a12b).
 Adicione a ferramenta `web_fetch({ url })`. Ela baixa a URL (timeout de 20 s), converte HTML em texto (remove `script`/`style`, tags e entidades básicas) e devolve até 20 000 caracteres. Só aceita `http` e `https`.
 **Aceite:** teste com `fetch` simulado devolvendo HTML: o resultado não tem tags nem script, e `file://` é rejeitado.
 
