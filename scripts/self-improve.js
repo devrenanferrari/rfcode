@@ -262,7 +262,7 @@ ${focus ? `\n## Direção do administrador (prioridade máxima)\n${focus}\n` : '
 
 ## Regras
 - Implemente SOMENTE a tarefa indicada, com mudanças pequenas e no estilo do código existente.
-- Siga os exemplos: lib/git.js + test/git.test.js mostram como criar ferramentas e testá-las; test/plan.test.js mostra como simular a API (fetch) sem rede.
+- Meta do projeto: paridade com o Claude Code (docs/CLAUDE_CODE_PARITY.md). Siga os exemplos: lib/git.js + test/git.test.js mostram como criar ferramentas e testá-las; test/plan.test.js mostra como simular a API (fetch) sem rede.
 - Escreva os testes de aceite em test/<tema>.test.js usando node:test.
 - Arquivos protegidos (NÃO edite): ${PROTECTED.join(', ')}.
 - Comandos permitidos: npm test, node --test <arquivos>, node --check <arquivo>, git status/diff/log/show. Use git_status/git_diff para revisar.

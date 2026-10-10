@@ -11,6 +11,8 @@ Também deve ser **agradável de usar**: interface bonita, identidade visual pr�
 
 Público: estudantes e desenvolvedores que querem um agente de código sem pagar por API.
 
+**Meta: paridade com o Claude Code.** O manual `docs/CLAUDE_CODE_PARITY.md` descreve o jeito de trabalhar e os recursos, com uma matriz do que já existe e do que falta. Cada lacuna é uma tarefa do backlog.
+
 ## 2. Princípios
 
 1. **Sem dependências de runtime.** Só Node ≥ 18 e APIs do sistema. Nada de `npm install` para usar.
@@ -218,3 +220,56 @@ Leia `~/.rfcode/settings.json` (respeitando `RFCODE_HOME`) com `{ "allow": ["run
 ### [ ] T18: Histórico de entradas na CLI
 Salve as últimas 200 entradas da CLI em `~/.rfcode/history` e carregue no readline (setas ↑ e ↓ entre sessões). Crie `lib/history.js` com `load()` e `append(line)`, ignorando linhas vazias e duplicadas em sequência.
 **Aceite:** teste com `RFCODE_HOME` temporário para append, load, limite de 200 e o caso de duplicadas.
+
+### [ ] T19: Ferramenta multi_edit
+Crie a ferramenta `multi_edit({ path, edits: [{ old_string, new_string, replace_all? }] })`. Ela aplica as edições em sequência na memória e só grava se **todas** derem certo; se uma falhar, nada muda e o erro diz qual edição falhou (índice). Reaproveite a lógica de `edit_file` (inclusive CRLF) e coloque `multi_edit` em `NEEDS_APPROVAL` e em `describeCall` (`MultiEdit(path, n edições)`).
+**Aceite:** `test/multiedit.test.js` cobre: 3 edições aplicadas; falha na 2ª deixa o arquivo intacto; replace_all; arquivo com CRLF.
+
+### [ ] T20: Comandos em segundo plano
+Em `run_command`, aceite `background: true`: o comando inicia, recebe um id (`bg1`, `bg2`…) e a ferramenta retorna na hora. Crie as ferramentas `command_output({ id })` (saída acumulada desde a última leitura, e se ainda está rodando) e `command_stop({ id })`. Mate todos os processos de fundo em `agent.abort()` e quando o processo sair.
+**Aceite:** teste que inicia `node -e "setInterval(()=>console.log('tick'),50)"` em segundo plano, lê a saída contendo "tick", para o processo e confirma que ele terminou.
+
+### [ ] T21: Memória em camadas e /memory
+Junte no prompt do sistema, nesta ordem e com títulos:
+1. `~/.rfcode/RFCODE.md` (preferências do usuário, respeitando `RFCODE_HOME`);
+2. o RFCODE.md/CLAUDE.md/AGENTS.md da raiz do projeto;
+3. arquivos RFCODE.md de subpastas que o agente leu nesta sessão.
+
+Crie `lib/memory.js` com `collectMemory(cwd, home, visitedDirs)` e `remember(texto, escopo)`, que acrescenta uma linha "- texto" ao arquivo do escopo (usuario|projeto). Na CLI, `/memory <texto>` salva no projeto e `/memory -u <texto>` salva no usuário.
+**Aceite:** `test/memory.test.js` com pastas temporárias: a ordem das camadas, o arquivo de subpasta só aparece depois de visitado, e `remember` cria e anexa.
+
+### [ ] T22: Hooks antes e depois de ferramentas
+Em `~/.rfcode/settings.json` e `<projeto>/.rfcode/settings.json`, aceite `{ "hooks": { "preTool": [{ "match": "edit_file|write_file", "command": "..." }], "postTool": [...] } }`. O comando recebe a chamada em JSON no stdin (`{ tool, args, cwd }`). Num preTool, saída com código 2 **bloqueia** a ferramenta e o stderr vira o motivo. Num postTool, a saída é anexada ao resultado. Crie `lib/hooks.js` com `runHooks(fase, tool, args, cwd, config)`.
+**Aceite:** `test/hooks.test.js`: um preTool que bloqueia, um postTool que anexa texto e um match por regex que não se aplica a outra ferramenta.
+
+### [ ] T23: Comandos personalizados
+Arquivos `.rfcode/commands/<nome>.md` (no projeto) e `~/.rfcode/commands/<nome>.md` viram `/nome` na CLI. O conteúdo é o prompt, e `$ARGUMENTS` é trocado pelo texto depois do comando. O `/help` lista os comandos encontrados. Crie `lib/commands.js` com `loadCommands(cwd, home)` e `expandCommand(linha, comandos)`.
+**Aceite:** `test/commands-custom.test.js`: carrega das duas pastas (o projeto vence em nome repetido), expande `$ARGUMENTS` e devolve null para comando inexistente.
+
+### [ ] T24: Subagentes (ferramenta task)
+Crie a ferramenta `task({ description, prompt })`. Ela roda um `Agent` filho com o mesmo modelo, só com ferramentas de leitura (`read_file`, `list_dir`, `glob`, `grep`, `git_status`, `git_diff`, `git_log`) e no máximo 25 passos, e devolve a resposta final do filho. O pai só vê o resumo, o que economiza contexto. Use hooks para mostrar o progresso do filho como `onCommandOutput`.
+**Aceite:** teste com `fetch` simulado: o filho chama `list_dir` e responde, o resultado da ferramenta `task` é essa resposta, e o filho não recebe `write_file` nas ferramentas.
+
+### [ ] T25: Ferramenta ask_user
+Crie a ferramenta `ask_user({ question, options: [string] })` e o hook `ask(question, options)`, que devolve a resposta escolhida (ou texto livre). Na CLI, mostre as opções numeradas. No painel do VS Code, mostre botões. Sem o hook, a resposta é "(sem resposta: decida com bom senso e siga)".
+**Aceite:** teste com `fetch` simulado e hook `ask` que devolve a opção 2: o resultado da ferramenta contém essa opção.
+
+### [ ] T26: /review
+Na CLI, crie `/review`. Ele pega `git diff` (stage e trabalho) e pede ao agente uma revisão focada em bugs reais (correção, casos de borda, segurança), com arquivo:linha e severidade, **sem editar nada** (use o modo plano da T16, ou ferramentas só de leitura). O prompt fica em `lib/prompts.js` (`REVIEW_PROMPT`).
+**Aceite:** teste que confere que `REVIEW_PROMPT` existe e que a montagem da mensagem inclui o diff.
+
+### [ ] T27: Saída JSON no modo -p
+`rfcode -p "tarefa" --output json` imprime só um JSON no fim, com `{ result, tools: [{ name, label, ok }], usage, error }`, sem cores nem spinner. Isso permite usar o rfcode em scripts e CI.
+**Aceite:** teste que roda `bin/rfcode.js -p ... --output json` com `RFCODE_HOME` temporário e um servidor HTTP local simulando a API (variável `RFCODE_BASE_URL`, que precisa ser criada em `lib/agent.js`), e valida o JSON.
+
+### [ ] T28: Fila de mensagens no painel do VS Code
+Enquanto o agente trabalha, o usuário pode mandar mensagens no painel. Elas entram numa fila visível ("na fila: 2") e são enviadas em ordem quando a resposta atual termina. A tecla Esc no campo de texto interrompe a resposta, como o botão Parar. A lógica da fila fica em `media/queue.js` (UMD, testável).
+**Aceite:** `test/queue.test.js` testa enfileirar, retirar na ordem e limpar no Parar.
+
+### [ ] T29: Diagnósticos do VS Code
+Quando o agente roda dentro da extensão, ofereça a ferramenta `get_diagnostics({ path? })`. Ela devolve erros e avisos do VS Code (`vscode.languages.getDiagnostics`) no formato `arquivo:linha: [erro] mensagem`. Fora da extensão a ferramenta não existe. Implemente com uma opção `extraTools` no Agent (definições + executor), para que a extensão injete a ferramenta.
+**Aceite:** teste do Agent com `extraTools` simulado: a ferramenta aparece na lista enviada ao modelo e o executor é chamado.
+
+### [ ] T30: Cliente MCP (stdio)
+Leia `mcpServers` de `.rfcode/settings.json` (`{ "nome": { "command": "...", "args": [] } }`), inicie cada servidor por stdio e fale JSON-RPC 2.0 (initialize, tools/list, tools/call). Exponha as ferramentas como `mcp__<servidor>__<ferramenta>`, sempre pedindo aprovação. Crie `lib/mcp.js`.
+**Aceite:** teste com um servidor MCP falso escrito em Node dentro do teste (responde initialize, tools/list com uma ferramenta "eco" e tools/call), confirmando que a ferramenta aparece e devolve o eco.
