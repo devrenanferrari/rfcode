@@ -148,7 +148,8 @@ Registre as três funções como ferramentas no `Agent` (definições em `TOOL_D
 Em `lib/git.js`, adicione `git_commit({ message, files? })`. Ela faz `git add` dos `files` (ou `-A`) e depois `git commit -m`. Coloque `git_commit` em `NEEDS_APPROVAL`. Mensagem vazia deve dar erro.
 **Aceite:** um teste num repositório temporário confirma que o commit foi criado com a mensagem certa e que mensagem vazia lança erro.
 
-### [ ] T03: Desfazer alterações (checkpoints)
+### [x] T03: Desfazer alterações (checkpoints)
+> Feito pelo loop em 2026-10-10 (nvidia/nemotron-3-super-120b-a12b).
 Crie `lib/checkpoints.js`. Antes de cada `write_file` e `edit_file`, o Agent guarda o conteúdo anterior do arquivo (ou a informação de que ele não existia) numa pilha em memória. `agent.undo()` desfaz a última alteração (restaura ou apaga o arquivo) e devolve uma descrição. Na CLI, crie o comando `/undo`.
 **Aceite:** teste que escreve, edita e desfaz duas vezes, voltando ao estado original (inclusive apagando um arquivo que foi criado).
 
