@@ -187,8 +187,24 @@ function ensureWorktree() {
   }
 }
 
-function gatesCheck(before) {
-  const changed = git(['status', '--porcelain']).split('\n').filter(Boolean).map((l) => l.slice(3).trim().replace(/\\/g, '/').replace(/^"|"$/g, ''));
+// Arquivos alterados na worktree. Usa -z e não apara a saída: o formato é "XY caminho" e o espaço inicial
+// de "XY" faz parte da linha (aparar cortaria a 1ª letra do 1º caminho e enganaria a proteção de arquivos).
+function changedFiles() {
+  const raw = execFileSync('git', ['-c', 'core.quotepath=false', 'status', '--porcelain', '-z', '--untracked-files=all'], { cwd: WT, encoding: 'utf8', windowsHide: true });
+  const parts = raw.split('\0');
+  const files = [];
+  for (let i = 0; i < parts.length; i++) {
+    const e = parts[i];
+    if (e.length < 4) continue;
+    const xy = e.slice(0, 2);
+    files.push(e.slice(3));
+    if (xy[0] === 'R' || xy[0] === 'C') files.push(parts[++i]); // renomeado: o caminho de origem vem em seguida
+  }
+  return files.filter(Boolean).map((f) => f.replace(/\\/g, '/'));
+}
+
+function gatesCheck(before, task) {
+  const changed = changedFiles();
   if (!changed.length) return { ok: false, kind: 'vazio', reason: 'nenhuma alteração feita' };
   const touched = PROTECTED.filter((p) => changed.includes(p));
   if (touched.length) return { ok: false, kind: 'protegido', reason: `arquivos protegidos alterados: ${touched.join(', ')}` };
@@ -203,6 +219,10 @@ function gatesCheck(before) {
     return { ok: false, kind: 'testes', reason: `testes falharam (${t.fail} falhas)\n${list}`, tests: t };
   }
   if (t.pass < before.pass) return { ok: false, kind: 'menos-testes', reason: `número de testes diminuiu (${before.pass} → ${t.pass})` };
+  // tarefa com critério de aceite exige teste novo
+  if (task && /\*\*Aceite:\*\*/.test(task.body) && t.pass <= before.pass) {
+    return { ok: false, kind: 'sem-teste', reason: `a tarefa tem critério de aceite, mas nenhum teste novo foi adicionado (antes ${before.pass}, agora ${t.pass}). Escreva o teste de aceite em test/<tema>.test.js.` };
+  }
   return { ok: true, tests: t, changed };
 }
 
@@ -251,7 +271,7 @@ async function iteration(apiKey, baseModel, fallbackModel, forcedTask, state) {
   log(`\n${c.bold(`▶ ${task.id}: ${task.title}`)} ${c.dim(`(tentativa ${attempt}, ${model})`)}`);
 
   const agent = new Agent({
-    apiKey, model, cwd: WT, tools: CODE_TOOLS, maxSteps: MAX_STEPS,
+    apiKey, model, cwd: WT, tools: CODE_TOOLS, maxSteps: MAX_STEPS, planReminderEvery: 5,
     systemExtra: `# Modo de auto-melhoria
 Você está melhorando o PRÓPRIO código do rfcode, seguindo o SDD em docs/SDD.md. Um administrador acompanha tudo ao vivo num painel.
 ${focus ? `\n## Direção do administrador (prioridade máxima)\n${focus}\n` : ''}
@@ -307,8 +327,8 @@ ${focus ? `\n## Direção do administrador (prioridade máxima)\n${focus}\n` : '
 
   // portões + rodadas de reparo: o agente recebe as falhas e tenta corrigir antes do veredito
   emit('phase', { phase: 'validando' });
-  let g = gatesCheck(before);
-  for (let round = 1; !g.ok && !stopReason && round <= REPAIR_ROUNDS && ['testes', 'menos-testes', 'vazio', 'pacote'].includes(g.kind); round++) {
+  let g = gatesCheck(before, task);
+  for (let round = 1; !g.ok && !stopReason && round <= REPAIR_ROUNDS && ['testes', 'menos-testes', 'vazio', 'pacote', 'sem-teste'].includes(g.kind); round++) {
     emit('repair', { round, reason: g.reason });
     log(c.yellow(`  ↻ reparo ${round}: ${g.reason.split('\n')[0]}`));
     emit('phase', { phase: 'corrigindo' });
@@ -317,7 +337,7 @@ ${focus ? `\n## Direção do administrador (prioridade máxima)\n${focus}\n` : '
       : `A validação automática falhou:\n${g.reason}\n\nCorrija o problema (leia os arquivos envolvidos, ajuste o código ou o teste) e rode npm test de novo.`;
     await agent.send(msg, hooks);
     emit('phase', { phase: 'validando' });
-    g = gatesCheck(before);
+    g = gatesCheck(before, task);
   }
   clearInterval(watcher);
   clearTimeout(timer);

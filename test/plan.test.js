@@ -70,3 +70,18 @@ test('maxSteps limita o loop', async () => {
   await a.send('loop', { onError: (m) => { err = m; } });
   assert.match(err, /Limite de 2 passos/);
 });
+
+test('lembrete de plano aparece depois de N ações sem update_plan', async () => {
+  const queue = [
+    sse(toolCall('update_plan', { goal: 'g', steps: [{ text: 'a', status: 'in_progress' }, { text: 'b', status: 'pending' }] })),
+    sse(toolCall('list_dir', { path: '.' })),
+    sse(toolCall('list_dir', { path: '.' })),
+    sse([{ choices: [{ delta: { content: 'fim' } }] }]),
+  ];
+  global.fetch = async () => queue.shift();
+  const a = new Agent({ apiKey: 'x', cwd: os.tmpdir(), planReminderEvery: 2 });
+  await a.send('faça', {});
+  const tools = a.messages.filter((m) => m.role === 'tool');
+  assert.ok(!/lembrete do sistema/.test(tools[1].content), 'ainda não');
+  assert.match(tools[2].content, /lembrete do sistema/);
+});

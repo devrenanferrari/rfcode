@@ -121,6 +121,7 @@ ${c.bold('Comandos:')}
   /models           lista modelos sugeridos
   /key              trocar a API key da NVIDIA
   /clear            limpa a conversa
+  /undo             desfaz a última alteração de arquivo feita pelo agente
   /auto             liga/desliga aprovação automática de edições e comandos
   /think            mostra/oculta o raciocínio do modelo
   /cd <dir>         muda o diretório de trabalho
@@ -143,8 +144,7 @@ ${c.dim('Dica: termine uma linha com \\ para continuar escrevendo na próxima. C
       console.log(c.dim('Conversa limpa.'));
       return;
     case 'undo':
-      const result = agent.undo();
-      console.log(result);
+      console.log(agent.undo());
       return;
     case 'auto':
       agent.autoApprove = !agent.autoApprove;

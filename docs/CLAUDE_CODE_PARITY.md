@@ -66,7 +66,7 @@ Um bom agente de código não é só um modelo com ferramentas. É um **método 
 | Modo auto (aceitar tudo) | ✅ `/auto`, caixa "auto" | n/a |
 | Modo plano (investigar e propor antes de mexer) | ⬜ | T16 |
 | Regras de permissão allow/deny em settings | ⬜ | T17 |
-| Desfazer alterações (checkpoints, /rewind) | 🟡 em andamento no loop | T03 |
+| Desfazer alterações (checkpoints, /rewind) | ✅ `/undo` (feito pelo loop, revisado) | T03 |
 | Hooks antes e depois de ferramentas | ⬜ | T22 |
 
 ### Experiência
