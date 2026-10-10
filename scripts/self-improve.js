@@ -208,6 +208,9 @@ function gatesCheck(before, task) {
   if (!changed.length) return { ok: false, kind: 'vazio', reason: 'nenhuma alteração feita' };
   const touched = PROTECTED.filter((p) => changed.includes(p));
   if (touched.length) return { ok: false, kind: 'protegido', reason: `arquivos protegidos alterados: ${touched.join(', ')}` };
+  // rascunhos e arquivos temporários não entram no repositório
+  const junk = changed.filter((f) => /(^|\/)(temp|tmp|scratch|rascunho|debug)[\w.-]*$/i.test(f) || /\.(log|bak|orig)$/i.test(f));
+  if (junk.length) return { ok: false, kind: 'lixo', reason: `arquivos temporários no repositório: ${junk.join(', ')}. Apague-os (ou não os crie): só código, testes e docs entram.` };
   try {
     const pkg = JSON.parse(fs.readFileSync(path.join(WT, 'package.json'), 'utf8'));
     if (!pkg.scripts || pkg.scripts.test !== TEST_SCRIPT) return { ok: false, kind: 'pacote', reason: 'scripts.test do package.json foi alterado' };
@@ -287,6 +290,7 @@ ${focus ? `\n## Direção do administrador (prioridade máxima)\n${focus}\n` : '
 - Arquivos protegidos (NÃO edite): ${PROTECTED.join(', ')}.
 - Comandos permitidos: npm test, node --test <arquivos>, node --check <arquivo>, git status/diff/log/show. Use git_status/git_diff para revisar.
 - Rode npm test antes de terminar e corrija até passar. Não use dependências externas.
+- Não deixe arquivos temporários ou de rascunho no repositório (temp_*, tmp*, *.log): eles fazem a tarefa ser rejeitada.
 - Em repositórios git temporários de teste, configure user.name e user.email antes de commitar.
 - No Windows, apague pastas temporárias com fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5 }) e só depois que os processos filhos terminarem.`,
   });
@@ -328,7 +332,7 @@ ${focus ? `\n## Direção do administrador (prioridade máxima)\n${focus}\n` : '
   // portões + rodadas de reparo: o agente recebe as falhas e tenta corrigir antes do veredito
   emit('phase', { phase: 'validando' });
   let g = gatesCheck(before, task);
-  for (let round = 1; !g.ok && !stopReason && round <= REPAIR_ROUNDS && ['testes', 'menos-testes', 'vazio', 'pacote', 'sem-teste'].includes(g.kind); round++) {
+  for (let round = 1; !g.ok && !stopReason && round <= REPAIR_ROUNDS && ['testes', 'menos-testes', 'vazio', 'pacote', 'sem-teste', 'lixo'].includes(g.kind); round++) {
     emit('repair', { round, reason: g.reason });
     log(c.yellow(`  ↻ reparo ${round}: ${g.reason.split('\n')[0]}`));
     emit('phase', { phase: 'corrigindo' });

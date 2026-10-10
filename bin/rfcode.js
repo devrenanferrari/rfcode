@@ -126,7 +126,7 @@ ${c.bold('Comandos:')}
   /think            mostra/oculta o raciocínio do modelo
   /cd <dir>         muda o diretório de trabalho
   /sessions         lista as 10 últimas sessões salvas
-  /resume <n>       carrega a n-ésima sessão da lista (começando em 1)
+  /resume <n>       retoma a n-ésima sessão da lista (padrão: a mais recente)
   /exit             sair
 ${c.dim('Dica: termine uma linha com \\ para continuar escrevendo na próxima. Ctrl+C interrompe a resposta.')}`);
       return;
@@ -163,48 +163,30 @@ ${c.dim('Dica: termine uma linha com \\ para continuar escrevendo na próxima. C
         console.log(c.dim(agent.cwd));
       } catch (e) { console.log(c.red(e.message)); }
       return;
-    case 'sessions':
-      const sessions = agent.sessionManager.list();
-      if (sessions.length === 0) {
-        console.log(c.dim('Nenhuma sessão salva.'));
-      } else {
-        console.log(c.bold('Sessões salvas (mais recente primeiro):'));
-        const limit = Math.min(10, sessions.length);
-        for (let i = 0; i < limit; i++) {
-          const sessionPath = sessions[i];
-          const sessionName = path.basename(sessionPath);
-          console.log(`  ${i + 1}. ${sessionName}`);
-        }
-        if (sessions.length > 10) {
-          console.log(c.dim(`  ... e mais ${sessions.length - 10} sessões`));
-        }
-      }
+    case 'sessions': {
+      const list = agent.sessionManager.list().filter((s) => s.id !== agent.sessionManager.id);
+      if (!list.length) { console.log(c.dim('Nenhuma sessão salva.')); return; }
+      console.log(c.bold('Sessões salvas (mais recentes primeiro):'));
+      list.slice(0, 10).forEach((s, i) => {
+        const when = new Date(s.updated).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        console.log(`  ${c.bold(String(i + 1).padStart(2))}. ${s.title} ${c.dim(`· ${when} · ${s.count} msgs · ${path.basename(s.cwd || '')}`)}`);
+      });
+      if (list.length > 10) console.log(c.dim(`  … e mais ${list.length - 10}`));
+      console.log(c.dim('  Use /resume <n> para continuar uma delas.'));
       return;
-    case 'resume':
-      if (!arg) {
-        console.log(c.red('Uso: /resume <n> (número da sessão na lista)'));
-        return;
-      }
-      const index = parseInt(arg, 10);
-      if (isNaN(index) || index < 1) {
-        console.log(c.red('Por favor, informe um número válido.'));
-        return;
-      }
-      const sessionsList = agent.sessionManager.list();
-      const sessionIndex = index - 1;
-      if (sessionIndex < 0 || sessionIndex >= sessionsList.length) {
-        console.log(c.red(`Sessão ${index} não encontrada. Lista tem ${sessionsList.length} sessões.`));
-        return;
-      }
-      const sessionPath = sessionsList[sessionIndex];
-      const messages = agent.sessionManager.load(sessionPath);
-      if (messages === null) {
-        console.log(c.red('Falha ao carregar a sessão.'));
-        return;
-      }
+    }
+    case 'resume': {
+      const list = agent.sessionManager.list().filter((s) => s.id !== agent.sessionManager.id);
+      const n = parseInt(arg || '1', 10);
+      const s = list[n - 1];
+      if (!s) { console.log(c.red(`Sessão ${arg || 1} não encontrada (há ${list.length}). Veja /sessions.`)); return; }
+      const messages = agent.sessionManager.load(s.file);
+      if (!messages) { console.log(c.red('Falha ao carregar a sessão.')); return; }
       agent.messages = messages;
-      console.log(c.green(`Sessão ${index} carregada com ${messages.length} mensagens.`));
+      console.log(c.green(`Retomando "${s.title}" (${messages.length} mensagens).`));
+      if (s.cwd && s.cwd !== agent.cwd) console.log(c.yellow(`  Atenção: a sessão era da pasta ${s.cwd}. Use /cd para voltar a ela, se quiser.`));
       return;
+    }
     case 'exit': case 'quit': case 'sair':
       rl.close(); process.exit(0);
     default:
@@ -224,6 +206,7 @@ Uso:
   rfcode                 abre o modo interativo no diretório atual
   rfcode "tarefa"        executa uma tarefa e continua no modo interativo
   rfcode -p "tarefa"     executa uma tarefa e sai (aprovação automática)
+  rfcode --continue      retoma a última conversa desta pasta (atalho: -c)
   rfcode --key           pede uma nova API key da NVIDIA
   rfcode --model <nome>  usa outro modelo
   rfcode --self-improve [--iterations N]  roda o loop de auto-melhoria do SDD
@@ -256,10 +239,21 @@ API key: ${CONFIG_FILE} (ou variável de ambiente NVIDIA_API_KEY)`);
   if (ki >= 0) argv.splice(ki, 1);
   if (!apiKey || ki >= 0) apiKey = await askApiKey(cfg);
 
-  const state = { agent: new Agent({ apiKey, model, cwd: process.cwd() }), showThinking: false };
+  const state = { agent: new Agent({ apiKey, model, cwd: process.cwd(), saveSession: true }), showThinking: false };
   const hooks = cliHooks(state);
 
   console.log(c.dim(`  modelo: ${model}\n  pasta:  ${process.cwd()}\n  /help para comandos\n`));
+
+  // --continue / -c: retoma a última conversa desta pasta
+  const ci = argv.findIndex((a) => a === '--continue' || a === '-c');
+  if (ci >= 0) {
+    argv.splice(ci, 1);
+    const sm = state.agent.sessionManager;
+    const last = sm.list().find((s) => s.cwd === process.cwd());
+    const msgs = last && sm.load(last.file);
+    if (msgs) { state.agent.messages = msgs; console.log(c.green(`  Retomando "${last.title}" (${msgs.length} mensagens).\n`)); }
+    else console.log(c.dim('  Nenhuma conversa anterior nesta pasta.\n'));
+  }
 
   process.on('SIGINT', () => {
     if (state.agent.busy) state.agent.abort();

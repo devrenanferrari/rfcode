@@ -1,120 +1,79 @@
 'use strict';
-// Teste de aceitação para sessões salvas e retomada
+// Sessões salvas e retomada (T07, revisada).
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { Agent } = require('../lib/agent');
+const { SessionManager } = require('../lib/sessions');
 
-function tmpHome() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rfcode-home-'));
-  // inicializa diretório de sessões vazio
-  const sessionsDir = path.join(dir, 'sessions');
-  fs.mkdirSync(sessionsDir, { recursive: true });
-  return dir;
-}
+const sse = (text) => new Response(`data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\ndata: [DONE]\n\n`);
 const cleanup = (dir) => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
 
-test('sessões: salva, lista e carrega a mesma conversa', async () => {
-  const homeDir = tmpHome();
-  try {
-    // Define RFCODE_HOME para o diretório temporário
-    process.env.RFCODE_HOME = homeDir;
-    const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rfcode-work-'));
-    try {
-      const agent = new Agent({ apiKey: 'x', cwd: agentDir });
-      // Simula uma mensagem do usuário e uma resposta simples do agente
-      // Vamos mockar o fetch para retornar uma resposta sem tool calls
-      const mockResponse = {
-        ok: true,
-        text: async () => '', // not used
-        body: {
-          [Symbol.asyncIterator]: () => {
-            let yielded = false;
-            return {
-              next() {
-                if (!yielded) {
-                  yielded = true;
-                  return { value: Buffer.from('data: {"choices":[{"delta":{"content":"ok"}}]}\n'), done: false };
-                }
-                return { value: Buffer.from('data: [DONE]\n'), done: true };
-              }
-            };
-          }
-        }
-      };
-      global.fetch = async () => mockResponse;
-      // Envia uma mensagem
-      await agent.send('oi', {});
-      // Após a resposta, a sessão deve ter sido salva
-      const sessionManager = agent.sessionManager;
-      const sessions = sessionManager.list();
-      assert.strictEqual(sessions.length, 1, 'Deveria existir exatamente uma sessão salva');
-      const sessionPath = sessions[0];
-      // Carrega a sessão
-      const loaded = sessionManager.load(sessionPath);
-      assert(Array.isArray(loaded), 'A sessão carregada deve ser um array');
-      assert.strictEqual(loaded.length, 2, 'Deveria ter duas mensagens: usuário e assistente');
-      assert.strictEqual(loaded[0].role, 'user');
-      assert.strictEqual(loaded[0].content, 'oi');
-      assert.strictEqual(loaded[1].role, 'assistant');
-      assert.strictEqual(loaded[1].content, 'ok');
-      // Testa listagem (deve retornar a mesma sessão)
-      const list = sessionManager.list();
-      assert.strictEqual(list.length, 1);
-      assert.strictEqual(list[0], sessionPath);
-    } finally {
-      cleanup(agentDir);
-    }
-  } finally {
-    delete process.env.RFCODE_HOME;
-    cleanup(homeDir);
+async function withHome(fn) {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rfcode-home-'));
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'rfcode-work-'));
+  const prev = process.env.RFCODE_HOME;
+  process.env.RFCODE_HOME = home;
+  try { await fn(home, work); } finally {
+    if (prev === undefined) delete process.env.RFCODE_HOME; else process.env.RFCODE_HOME = prev;
+    cleanup(home); cleanup(work);
   }
+}
+
+test('uma conversa = um arquivo, regravado a cada resposta, com título', async () => {
+  await withHome(async (home, work) => {
+    global.fetch = async () => sse('ok');
+    const agent = new Agent({ apiKey: 'x', cwd: work, saveSession: true });
+    await agent.send('Explique o projeto @nada', {});
+    await agent.send('agora escreva testes', {});
+    await agent.send('e rode', {});
+    const list = agent.sessionManager.list();
+    assert.strictEqual(list.length, 1);
+    assert.strictEqual(list[0].title, 'Explique o projeto @nada');
+    assert.strictEqual(list[0].count, 6);
+    assert.strictEqual(list[0].cwd, work);
+  });
 });
 
-test('sessões: lista as 10 mais recentes', async () => {
-  const homeDir = tmpHome();
-  try {
-    process.env.RFCODE_HOME = homeDir;
-    const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rfcode-work-'));
-    try {
-      const agent = new Agent({ apiKey: 'x', cwd: agentDir });
-      const mockResponse = {
-        ok: true,
-        text: async () => '', // not used
-        body: {
-          [Symbol.asyncIterator]: () => {
-            let yielded = false;
-            return {
-              next() {
-                if (!yielded) {
-                  yielded = true;
-                  return { value: Buffer.from('data: {"choices":[{"delta":{"content":"ok"}}]}\n'), done: false };
-                }
-                return { value: Buffer.from('data: [DONE]\n'), done: true };
-              }
-            };
-          }
-        }
-      };
-      global.fetch = async () => mockResponse;
-      // Cria 15 sessões
-      for (let i = 0; i < 15; i++) {
-        await agent.send(`mensagem ${i}`, {});
-      }
-      const sessionManager = agent.sessionManager;
-      const sessions = sessionManager.list();
-      // Deve ter exatamente 15 sessões salvas
-      assert.strictEqual(sessions.length, 15);
-      // O método list() já retorna ordenado do mais recente para o mais antigo
-      // Vamos verificar que as 10 primeiras são as mais recentes
-      // (não testamos o comando /sessions aqui, apenas o gerenciador)
-    } finally {
-      cleanup(agentDir);
-    }
-  } finally {
-    delete process.env.RFCODE_HOME;
-    cleanup(homeDir);
-  }
+test('sem saveSession nada é gravado (testes, loop e extensão não sujam a pasta do usuário)', async () => {
+  await withHome(async (home, work) => {
+    global.fetch = async () => sse('ok');
+    await new Agent({ apiKey: 'x', cwd: work }).send('oi', {});
+    assert.ok(!fs.existsSync(path.join(home, 'sessions')) || fs.readdirSync(path.join(home, 'sessions')).length === 0);
+  });
+});
+
+test('retomar continua gravando no mesmo arquivo e lista mais recentes primeiro', async () => {
+  await withHome(async (home, work) => {
+    global.fetch = async () => sse('ok');
+    const a = new Agent({ apiKey: 'x', cwd: work, saveSession: true });
+    await a.send('primeira conversa', {});
+    const b = new Agent({ apiKey: 'x', cwd: work, saveSession: true });
+    await new Promise((r) => setTimeout(r, 15));
+    await b.send('segunda conversa', {});
+    const sm = new SessionManager();
+    const list = sm.list();
+    assert.deepStrictEqual(list.map((s) => s.title), ['segunda conversa', 'primeira conversa']);
+
+    const c = new Agent({ apiKey: 'x', cwd: work, saveSession: true });
+    c.messages = c.sessionManager.load(list[1].file);
+    await c.send('continuando a primeira', {});
+    const after = sm.list();
+    assert.strictEqual(after.length, 2, 'retomar não cria arquivo novo');
+    const first = after.find((s) => s.title === 'primeira conversa');
+    assert.strictEqual(first.count, 4);
+  });
+});
+
+test('aceita o formato antigo (só o array de mensagens)', async () => {
+  await withHome(async (home) => {
+    fs.mkdirSync(path.join(home, 'sessions'), { recursive: true });
+    fs.writeFileSync(path.join(home, 'sessions', 'antiga.json'), JSON.stringify([{ role: 'user', content: 'velha' }, { role: 'assistant', content: 'r' }]));
+    const sm = new SessionManager();
+    const [s] = sm.list();
+    assert.strictEqual(s.title, 'velha');
+    assert.strictEqual(sm.load(s.file).length, 2);
+  });
 });
