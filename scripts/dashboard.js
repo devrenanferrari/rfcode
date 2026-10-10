@@ -75,7 +75,9 @@ function state() {
     stopRequested: !!readJson(CONTROL_FILE, {}).stop,
     next: readJson(CONTROL_FILE, {}).next || null,
     focus: fs.existsSync(FOCUS_FILE) ? fs.readFileSync(FOCUS_FILE, 'utf8') : '',
-    tasks: readTasks().map((t) => ({ ...t, failures: (st.failures || {})[t.id] || 0, lastFailure: (st.lastFailure || {})[t.id] || null })),
+    tasks: readTasks().map((t) => (t.state === 'x'
+      ? { ...t, failures: 0, lastFailure: null }
+      : { ...t, failures: (st.failures || {})[t.id] || 0, lastFailure: (st.lastFailure || {})[t.id] || null })),
     branch: branchInfo(),
     mainHead: tryGit(['log', '-1', '--pretty=format:%h %s']),
     runs: readJson(path.join(RUNS, 'index.json'), []).slice(0, 30),
@@ -167,9 +169,14 @@ function send(res, code, body, type = 'application/json; charset=utf-8') {
 }
 function readBody(req) {
   return new Promise((resolve, reject) => {
-    let b = '';
-    req.on('data', (d) => { b += d; if (b.length > 1e6) req.destroy(); });
-    req.on('end', () => { try { resolve(b ? JSON.parse(b) : {}); } catch (e) { reject(e); } });
+    // junta os bytes antes de decodificar: um caractere UTF-8 pode vir partido entre dois pedaços
+    const chunks = [];
+    let size = 0;
+    req.on('data', (d) => { chunks.push(d); size += d.length; if (size > 1e6) req.destroy(); });
+    req.on('end', () => {
+      const b = Buffer.concat(chunks).toString('utf8');
+      try { resolve(b ? JSON.parse(b) : {}); } catch (e) { reject(e); }
+    });
   });
 }
 

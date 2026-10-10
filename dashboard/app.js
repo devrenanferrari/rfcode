@@ -224,7 +224,9 @@
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
     const showReads = $('showReads').checked;
     const time = (ts) => new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const items = r.feed.filter((f) => showReads || !(f.kind === 'tool' && READS.has(f.e.name))).map((f) => {
+    const items = r.feed
+      .filter((f) => !(f.kind === 'tool' && f.e.name === 'update_plan')) // o evento "plan" já mostra isso
+      .filter((f) => showReads || !(f.kind === 'tool' && READS.has(f.e.name))).map((f) => {
       const e = f.e;
       switch (f.kind) {
         case 'task': return li('task', '', `Tarefa ${esc(e.task.id)}: ${esc(e.task.title)}`, `Alvo: ${esc(e.goal)}`, '', e.ts);

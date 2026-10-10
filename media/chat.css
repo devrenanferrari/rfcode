@@ -91,3 +91,5 @@ textarea:focus { outline: 1px solid var(--vscode-focusBorder); }
 .plan .step.done { color: var(--vscode-descriptionForeground); text-decoration: line-through; }
 .plan .step.in_progress { font-weight: 600; }
 .plan .why { color: var(--vscode-descriptionForeground); margin-top: 3px; }
+
+.welcome .logo { width: 56px; height: 56px; margin-bottom: 6px; }

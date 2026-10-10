@@ -59,6 +59,27 @@ Programas Win32 antigos (como o Bloco de Notas clássico) expõem poucos element
 
 Se existir `RFCODE.md`, `CLAUDE.md` ou `AGENTS.md` na pasta, o conteúdo entra como instruções do projeto.
 
+## Central de auto-melhoria (painel do administrador)
+
+```powershell
+npm run painel        # ou: rfcode --painel   ·   VS Code: "rfcode: Painel de auto-melhoria"
+```
+O painel abre em http://127.0.0.1:4517. Ele só aceita acessos do próprio computador. Nele você:
+- **define a direção**: um texto de foco que o agente recebe como prioridade máxima;
+- **escolhe o que fazer**: "Fazer a seguir", "Rodar só esta", criar uma tarefa nova no SDD ou reabrir uma bloqueada;
+- **inicia e para** rodadas, escolhendo o modelo e quantas tarefas;
+- **acompanha ao vivo**:
+  - a tarefa e o alvo dela;
+  - a fase (Preparar → Entender → Implementar → Testar → Validar → Commit);
+  - o que o agente está fazendo agora e por quê;
+  - o plano com progresso;
+  - os arquivos e as **funções, ferramentas e testes que ele está escrevendo**;
+  - a linha do tempo com o motivo de cada ação;
+  - os testes, os tokens e as rodadas de reparo;
+- **revisa e aceita**: vê o diff de cada commit da branch `self-improve` e faz o merge com um clique.
+
+As rodadas antigas ficam no histórico e podem ser reabertas.
+
 ## SDD e auto-melhoria
 
 O `docs/SDD.md` é o documento de design: visão, arquitetura, regras de qualidade e o **backlog** de melhorias.

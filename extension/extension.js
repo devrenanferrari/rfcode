@@ -78,11 +78,12 @@ class ChatViewProvider {
     const nonce = crypto.randomBytes(16).toString('hex');
     const css = webview.asWebviewUri(vscode.Uri.joinPath(media, 'chat.css'));
     const js = webview.asWebviewUri(vscode.Uri.joinPath(media, 'chat.js'));
+    const logo = webview.asWebviewUri(vscode.Uri.joinPath(media, 'logo.svg'));
     return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource}; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="${css}">
 <title>rfcode</title>
@@ -95,6 +96,7 @@ class ChatViewProvider {
   </header>
   <main id="log">
     <div class="welcome" id="welcome">
+      <img src="${logo}" class="logo" alt="">
       <h2>rfcode</h2>
       <p>Agente de código e controle do PC com modelos gratuitos da NVIDIA.</p>
       <p class="muted" id="cwd"></p>
