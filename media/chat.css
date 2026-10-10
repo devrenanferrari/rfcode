@@ -84,3 +84,10 @@ textarea {
 textarea:focus { outline: 1px solid var(--vscode-focusBorder); }
 .actions { display: flex; gap: 6px; justify-content: flex-end; align-items: center; margin-top: 6px; }
 .actions #status { flex: 1; }
+
+.plan { margin-bottom: 8px; padding: 6px 8px; border: 1px solid var(--vscode-panel-border); border-left: 3px solid var(--vscode-charts-green); border-radius: 4px; font-size: 0.9em; max-height: 160px; overflow-y: auto; }
+.plan-head { display: flex; justify-content: space-between; gap: 6px; margin-bottom: 3px; }
+.plan .step { display: flex; gap: 6px; }
+.plan .step.done { color: var(--vscode-descriptionForeground); text-decoration: line-through; }
+.plan .step.in_progress { font-weight: 600; }
+.plan .why { color: var(--vscode-descriptionForeground); margin-top: 3px; }

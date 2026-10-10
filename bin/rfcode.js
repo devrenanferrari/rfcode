@@ -96,6 +96,14 @@ function cliHooks(state) {
     onRetry(msg) { console.log(c.yellow('\n' + msg)); },
     onError(msg) { out('\r\x1b[2K'); console.log(c.red('\nErro: ' + msg)); },
     onAborted() { out('\r\x1b[2K'); console.log(c.yellow('\n[interrompido]')); },
+    onPlan(p) {
+      const icon = { done: c.green('☑'), in_progress: c.cyan('◐'), pending: c.dim('☐') };
+      if (p.goal) console.log(c.bold(`  🎯 ${p.goal}`));
+      for (const s of p.steps) console.log(`  ${icon[s.status]} ${s.status === 'done' ? c.dim(s.text) : s.status === 'in_progress' ? c.bold(s.text) : s.text}`);
+      if (p.why) console.log(c.dim(`     ↳ ${p.why}`));
+    },
+    onUsage(u) { state.usage = u; },
+    onDone() { if (state.usage) console.log(c.dim(`  · ${state.usage.total.toLocaleString('pt-BR')} tokens nesta sessão`)); },
   };
 }
 
@@ -171,11 +179,17 @@ Uso:
   rfcode --key           pede uma nova API key da NVIDIA
   rfcode --model <nome>  usa outro modelo
   rfcode --self-improve [--iterations N]  roda o loop de auto-melhoria do SDD
+  rfcode --painel        abre o painel do administrador (acompanhar e dirigir a auto-melhoria)
 
 API key: ${CONFIG_FILE} (ou variável de ambiente NVIDIA_API_KEY)`);
     process.exit(0);
   }
 
+  if (argv[0] === '--painel') {
+    const { spawnSync } = require('child_process');
+    const r = spawnSync(process.execPath, [path.join(__dirname, '..', 'scripts', 'dashboard.js'), '--open'], { stdio: 'inherit' });
+    process.exit(r.status ?? 1);
+  }
   if (argv[0] === '--self-improve') {
     // repassa para o loop de auto-melhoria (scripts/self-improve.js)
     const { spawnSync } = require('child_process');

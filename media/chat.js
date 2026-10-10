@@ -10,6 +10,7 @@
   let spinner = null;
   const tools = new Map(); // id -> elementos do cartão da ferramenta
   let lastCmdTool = null;
+  let tokens = 0;
 
   // ---------- markdown simples ----------
   function esc(s) {
@@ -68,7 +69,7 @@
     busy = b;
     sendBtn.disabled = b;
     stopBtn.classList.toggle('hidden', !b);
-    statusEl.textContent = b ? 'trabalhando…' : '';
+    statusEl.textContent = b ? 'trabalhando…' : (tokens ? `${tokens.toLocaleString('pt-BR')} tokens` : '');
   }
   function showSpinner(text) {
     if (!spinner) spinner = div('spinner');
@@ -125,7 +126,7 @@
       case 'cleared':
         log.innerHTML = '';
         log.appendChild(div('welcome', `<h2>rfcode</h2><p>Nova conversa.</p><p class="muted">Pasta: ${esc(m.cwd)}</p>`));
-        current = null; tools.clear(); hideSpinner(); setBusy(false);
+        current = null; tools.clear(); hideSpinner(); tokens = 0; $('plan').classList.add('hidden'); setBusy(false);
         break;
       case 'user': {
         hideWelcome();
@@ -247,6 +248,19 @@
         scroll();
         break;
       }
+      case 'plan': {
+        const p = m.plan, el = $('plan');
+        const icon = { done: '☑', in_progress: '◐', pending: '☐' };
+        const done = p.steps.filter((s) => s.status === 'done').length;
+        el.innerHTML = `<div class="plan-head"><b>${esc(p.goal || 'Plano')}</b><span>${done}/${p.steps.length}</span></div>`
+          + p.steps.map((s) => `<div class="step ${s.status}"><span>${icon[s.status]}</span>${esc(s.text)}</div>`).join('')
+          + (p.why ? `<div class="why">↳ ${esc(p.why)}</div>` : '');
+        el.classList.toggle('hidden', !p.steps.length);
+        break;
+      }
+      case 'usage':
+        tokens = m.usage.total;
+        break;
       case 'info': hideSpinner(); note('info', m.text); break;
       case 'error': hideSpinner(); note('error', m.text); break;
       case 'done':

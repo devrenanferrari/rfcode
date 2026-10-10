@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rfcode · Central de auto-melhoria</title>
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <img src="logo.svg" alt="">
+    <h1>rfcode <span>· Central de auto-melhoria</span></h1>
+  </div>
+  <span class="pill" id="status"><span class="dot"></span><span id="statusText">parado</span></span>
+  <div class="controls">
+    <select id="model" title="Modelo usado pelo agente"></select>
+    <label class="muted" title="Quantas tarefas tentar nesta rodada">tarefas <input type="number" id="iters" min="1" max="50" value="3"></label>
+    <button class="btn primary" id="startBtn">▶ Iniciar rodada</button>
+    <button class="btn danger hidden" id="stopBtn">■ Parar</button>
+    <button class="icon-btn" id="themeBtn" title="Alternar tema">◐</button>
+  </div>
+</header>
+
+<main class="grid">
+  <!-- coluna A: direção e backlog -->
+  <section class="col">
+    <article class="card">
+      <header><h2>🧭 Direção do administrador</h2></header>
+      <div class="body">
+        <textarea id="focus" placeholder="Ex.: priorize a experiência do painel do VS Code; não mexa no controle do PC; prefira mudanças pequenas e bem testadas."></textarea>
+        <div class="row end" style="margin-top:8px">
+          <span class="hint" id="focusSaved" style="margin-right:auto"></span>
+          <button class="btn small" id="focusBtn">Salvar foco</button>
+        </div>
+        <div class="hint">O agente recebe este texto como prioridade máxima em toda tarefa.</div>
+      </div>
+    </article>
+
+    <article class="card">
+      <header>
+        <h2>🗂 Backlog (SDD)</h2>
+        <div class="right counts" id="counts"></div>
+      </header>
+      <ul class="tasks" id="tasks"></ul>
+      <details class="newtask">
+        <summary>+ Nova tarefa</summary>
+        <div class="body">
+          <input type="text" id="ntTitle" placeholder="Título (ex.: Botão de copiar nos blocos de código)">
+          <textarea id="ntBody" placeholder="O que fazer, onde e por quê"></textarea>
+          <textarea id="ntAcc" placeholder="Critério de aceite (como saber que ficou pronto; qual teste)"></textarea>
+          <div class="row end"><button class="btn small primary" id="ntBtn">Adicionar ao SDD</button></div>
+        </div>
+      </details>
+    </article>
+  </section>
+
+  <!-- coluna B: o que está acontecendo -->
+  <section class="col">
+    <article class="card">
+      <header><h2>🎯 Agora</h2><div class="right faint mono" id="nowRun"></div></header>
+      <div class="body" id="now">
+        <div class="empty">Nenhuma rodada em andamento. Defina o foco, escolha a próxima tarefa e clique em <b>Iniciar rodada</b>.</div>
+      </div>
+    </article>
+
+    <article class="card">
+      <header>
+        <h2>🛠 Código em construção</h2>
+        <div class="right"><button class="btn small" id="liveDiffBtn">Ver diff ao vivo</button></div>
+      </header>
+      <div class="body" id="code"><div class="empty">Nenhuma alteração ainda.</div></div>
+    </article>
+
+    <article class="card">
+      <header>
+        <h2>📜 Linha do tempo</h2>
+        <div class="right"><label class="faint" style="font-size:12px"><input type="checkbox" id="showReads" checked> leituras</label></div>
+      </header>
+      <ul class="timeline" id="timeline"><li class="empty">Os passos do agente aparecem aqui, com o motivo de cada um.</li></ul>
+    </article>
+  </section>
+
+  <!-- coluna C: resultado, revisão, histórico -->
+  <section class="col col-c">
+    <article class="card">
+      <header><h2>📊 Resultado</h2></header>
+      <div class="body">
+        <div class="stats">
+          <div class="stat"><div class="k">Testes</div><div class="v" id="sTests">–</div></div>
+          <div class="stat"><div class="k">Tokens</div><div class="v" id="sTokens">–</div></div>
+          <div class="stat"><div class="k">Ações</div><div class="v" id="sActions">–</div></div>
+          <div class="stat"><div class="k">Reparos</div><div class="v" id="sRepairs">–</div></div>
+        </div>
+        <div id="verdict"></div>
+      </div>
+    </article>
+
+    <article class="card">
+      <header><h2>✅ Para revisar</h2><div class="right faint" id="aheadCount"></div></header>
+      <ul class="commits" id="commits"></ul>
+      <div class="body" style="border-top:1px solid var(--line)">
+        <button class="btn primary" id="mergeBtn" style="width:100%" disabled>Aceitar melhorias (merge no main)</button>
+        <div class="hint">O loop nunca faz merge sozinho. Revise os diffs e aceite aqui.</div>
+      </div>
+    </article>
+
+    <article class="card">
+      <header><h2>🕘 Rodadas</h2></header>
+      <ul class="runs" id="runs"></ul>
+    </article>
+  </section>
+</main>
+
+<div class="modal hidden" id="modal">
+  <div class="box">
+    <header><b id="modalTitle">Diff</b><button class="icon-btn" id="modalClose">✕</button></header>
+    <pre class="diff" id="modalBody"></pre>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

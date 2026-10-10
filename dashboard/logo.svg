@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="rfcode">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9BE22D"/>
+      <stop offset="1" stop-color="#5E9600"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#14171c"/>
+  <rect x="2.5" y="2.5" width="59" height="59" rx="13.5" fill="none" stroke="#2a3038"/>
+  <path d="M14 21 L25 32 L14 43" fill="none" stroke="url(#g)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="29" y="41" font-family="'JetBrains Mono','Cascadia Code',Consolas,monospace" font-size="21" font-weight="700" fill="#f2f4f7" letter-spacing="-1">rf</text>
+  <rect x="29" y="45" width="22" height="3.5" rx="1.75" fill="url(#g)"/>
+</svg>

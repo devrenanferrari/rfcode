@@ -71,6 +71,10 @@
       {
         "command": "rfcode.selfImprove",
         "title": "rfcode: Auto-melhoria (loop do SDD)"
+      },
+      {
+        "command": "rfcode.dashboard",
+        "title": "rfcode: Painel de auto-melhoria"
       }
     ],
     "menus": {
@@ -113,6 +117,7 @@
   "type": "commonjs",
   "scripts": {
     "test": "node --test \"test/**/*.test.js\"",
-    "self-improve": "node scripts/self-improve.js"
+    "self-improve": "node scripts/self-improve.js",
+    "painel": "node scripts/dashboard.js --open"
   }
 }

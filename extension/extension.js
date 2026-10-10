@@ -102,6 +102,7 @@ class ChatViewProvider {
     </div>
   </main>
   <footer>
+    <div id="plan" class="plan hidden"></div>
     <textarea id="input" rows="3" placeholder="Peça algo… (Enter envia, Shift+Enter quebra linha)"></textarea>
     <div class="actions">
       <span class="muted" id="status"></span>
@@ -190,6 +191,8 @@ class ChatViewProvider {
       onToolCall: (info) => this.post({ type: 'toolCall', ...info }),
       onCommandOutput: (t) => this.post({ type: 'cmdOut', text: t }),
       onToolResult: (r) => this.post({ type: 'toolResult', ...r }),
+      onPlan: (plan) => this.post({ type: 'plan', plan }),
+      onUsage: (usage) => this.post({ type: 'usage', usage }),
       approve: (info) => new Promise((resolve) => {
         this.pending.set(info.id, resolve);
         this.post({ type: 'approval', id: info.id });
@@ -224,6 +227,17 @@ function activate(context) {
       const term = vscode.window.createTerminal({ name: 'rfcode: auto-melhoria', cwd: repo });
       term.show();
       term.sendText(`node scripts/self-improve.js --iterations ${n}`);
+    }),
+    vscode.commands.registerCommand('rfcode.dashboard', async () => {
+      const repo = settings().get('repoPath') || context.extensionPath;
+      const url = 'http://127.0.0.1:4517';
+      const up = await fetch(url + '/api/state').then((r) => r.ok).catch(() => false);
+      if (!up) {
+        const term = vscode.window.createTerminal({ name: 'rfcode: painel', cwd: repo });
+        term.sendText('node scripts/dashboard.js');
+        for (let i = 0; i < 20 && !(await fetch(url + '/api/state').then((r) => r.ok).catch(() => false)); i++) await new Promise((r) => setTimeout(r, 300));
+      }
+      vscode.env.openExternal(vscode.Uri.parse(url));
     }),
     vscode.commands.registerCommand('rfcode.askSelection', async () => {
       const ed = vscode.window.activeTextEditor;
