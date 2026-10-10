@@ -2,7 +2,7 @@
   "name": "rfcode",
   "displayName": "rfcode",
   "description": "Agente de código e controle do PC (estilo Claude Code) usando os modelos gratuitos da NVIDIA",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "publisher": "renan",
   "license": "MIT",
   "icon": "media/logo.png",
