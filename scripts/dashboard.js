@@ -34,7 +34,21 @@ function alive(pid) { try { process.kill(pid, 0); return true; } catch { return 
 function running() {
   const ctl = readJson(CONTROL_FILE, {});
   if (ctl.running && ctl.running.pid && alive(ctl.running.pid)) return ctl.running;
+  if (ctl.running && ctl.running.id) reconcileDeadRun(ctl);
   return null;
+}
+// O processo do loop morreu sem encerrar a rodada (fechado à força, queda de energia...): registra para o administrador ver.
+function reconcileDeadRun(ctl) {
+  const id = ctl.running.id;
+  if (/^[\w-]+$/.test(id)) {
+    const f = path.join(RUNS, `${id}.jsonl`);
+    const ev = { ts: new Date().toISOString(), run: id, type: 'run_end', status: 'interrompida', text: 'O processo do loop terminou sem encerrar a rodada. As alterações não commitadas serão descartadas na próxima rodada.' };
+    try { fs.appendFileSync(f, JSON.stringify({ ...ev, type: 'error', text: ev.text }) + '\n' + JSON.stringify(ev) + '\n'); } catch {}
+    const idx = readJson(path.join(RUNS, 'index.json'), []);
+    const r = idx.find((x) => x.id === id);
+    if (r) { r.status = 'interrompida'; r.end = ev.ts; writeJson(path.join(RUNS, 'index.json'), idx); }
+  }
+  writeJson(CONTROL_FILE, { ...ctl, running: null, stop: false });
 }
 function sddPath() { return fs.existsSync(path.join(WT, SDD)) ? path.join(WT, SDD) : path.join(ROOT, SDD); }
 function readTasks() {
