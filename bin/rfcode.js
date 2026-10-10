@@ -142,6 +142,10 @@ ${c.dim('Dica: termine uma linha com \\ para continuar escrevendo na próxima. C
       agent.clear();
       console.log(c.dim('Conversa limpa.'));
       return;
+    case 'undo':
+      const result = agent.undo();
+      console.log(result);
+      return;
     case 'auto':
       agent.autoApprove = !agent.autoApprove;
       console.log(`Aprovação automática: ${agent.autoApprove ? c.green('ligada') : c.yellow('desligada')}`);
