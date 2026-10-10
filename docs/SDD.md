@@ -168,7 +168,8 @@ Crie `lib/mentions.js` com `expandMentions(texto, cwd)`. Para cada `@caminho` de
 Adicione a ferramenta `web_fetch({ url })`. Ela baixa a URL (timeout de 20 s), converte HTML em texto (remove `script`/`style`, tags e entidades básicas) e devolve até 20 000 caracteres. Só aceita `http` e `https`.
 **Aceite:** teste com `fetch` simulado devolvendo HTML: o resultado não tem tags nem script, e `file://` é rejeitado.
 
-### [ ] T07: Sessões salvas e retomada
+### [x] T07: Sessões salvas e retomada
+> Feito pelo loop em 2026-10-10 (nvidia/nemotron-3-super-120b-a12b).
 Crie `lib/sessions.js` para salvar `agent.messages` em `~/.rfcode/sessions/<data>-<id>.json` (respeitando `RFCODE_HOME`) depois de cada resposta, e para listar e carregar sessões. Na CLI, crie `/sessions` (lista as 10 últimas) e `/resume <n>`.
 **Aceite:** teste com `RFCODE_HOME` temporário: salva, lista e carrega a mesma conversa.
 
