@@ -173,7 +173,8 @@ Adicione a ferramenta `web_fetch({ url })`. Ela baixa a URL (timeout de 20 s), c
 Crie `lib/sessions.js` para salvar `agent.messages` em `~/.rfcode/sessions/<data>-<id>.json` (respeitando `RFCODE_HOME`) depois de cada resposta, e para listar e carregar sessões. Na CLI, crie `/sessions` (lista as 10 últimas) e `/resume <n>`.
 **Aceite:** teste com `RFCODE_HOME` temporário: salva, lista e carrega a mesma conversa.
 
-### [ ] T08: Compactação de contexto
+### [x] T08: Compactação de contexto
+> Feito à mão em 2026-10-10/11: resumo automático acima de 160 mil caracteres + comando /compact (Agent.compact).
 Quando o histórico passar de 120 000 caracteres, substitua as mensagens antigas (todas menos as 6 últimas) por um resumo. O resumo é gerado com uma chamada sem ferramentas ao mesmo modelo e entra como uma mensagem `user` com o prefixo "Resumo da conversa anterior:". Ele nunca pode separar um par `assistant(tool_calls)`/`tool`.
 **Aceite:** teste com `fetch` simulado: depois da compactação, o histórico fica menor, começa com o resumo e continua válido (cada `tool` tem o `assistant` correspondente).
 
@@ -182,15 +183,18 @@ Quando o histórico passar de 120 000 caracteres, substitua as mensagens antigas
 Adicione a ferramenta `todo_write({ items: [{ text, status: pending|in_progress|done }] })`. Ela guarda `agent.todos` e chama o hook `onTodos(items)`. O prompt do sistema deve orientar o modelo a usar a ferramenta em tarefas com 3 ou mais passos. A CLI mostra a lista com ☐ ◐ ☑ e o painel mostra a lista fixa acima do campo de texto.
 **Aceite:** teste com `fetch` simulado que chama `todo_write` e confere `agent.todos` e o hook.
 
-### [ ] T10: Painel: identidade visual e logo
+### [x] T10: Painel: identidade visual e logo
+> Feito à mão em 2026-10-10/11: painel redesenhado (v1.3.0): logo, tema com verde de destaque e 4 sugestões na tela inicial.
 Crie o logo do rfcode em SVG (`media/logo.svg`): um símbolo `>` estilizado com as letras "rf", em verde NVIDIA `#76B900` sobre grafite. Use esse logo no cabeçalho do painel e na tela de boas-vindas. Defina variáveis CSS de marca (`--rf-accent`) e aplique o acento nos botões principais, no cartão ativo e nos links, mantendo o tema do VS Code. A tela de boas-vindas deve mostrar 4 sugestões clicáveis ("Explique este projeto", "Encontre bugs", "Escreva testes", "Mostre o git status") que preenchem e enviam a mensagem.
 **Aceite:** o arquivo `media/logo.svg` existe e é um SVG válido. Um teste lê `media/chat.js` e confirma que as sugestões existem (strings presentes).
 
-### [ ] T11: Painel: botão copiar e linguagem nos blocos de código
+### [x] T11: Painel: botão copiar e linguagem nos blocos de código
+> Feito à mão em 2026-10-10/11: media/markdown.js (UMD) com linguagem e botão Copiar; test/markdown.test.js.
 Nos blocos de código renderizados em `media/chat.js`, mostre o nome da linguagem e um botão "Copiar" (use `navigator.clipboard.writeText`). Mova o renderizador de markdown para `media/markdown.js`, como módulo UMD que funciona no navegador (`window.rfMarkdown`) e no Node (`module.exports`), para poder ser testado.
 **Aceite:** `test/markdown.test.js` testa títulos, listas, código inline, blocos com linguagem e escape de HTML (`<script>` vira texto).
 
-### [ ] T12: Painel: comandos / e histórico
+### [x] T12: Painel: comandos / e histórico
+> Feito à mão em 2026-10-10/11: comandos "/" com menu de autocompletar (lib/commands.js, compartilhado com a CLI). Falta: ↑/↓ no histórico de mensagens do painel.
 No campo de texto do painel:
 - `/clear` limpa a conversa;
 - `/model <id>` troca o modelo;
@@ -201,23 +205,28 @@ No campo de texto do painel:
 A extensão trata as novas mensagens do webview.
 **Aceite:** a lógica de parsing fica em `media/commands.js` (UMD) e é testada em `test/commands.test.js`.
 
-### [ ] T13: Diff no editor do VS Code
+### [x] T13: Diff no editor do VS Code
+> Feito à mão em 2026-10-10/11: botão "Ver diff" no cartão de aprovação (Agent.proposedContent + documento virtual rfcode-proposed).
 Quando o agente pedir aprovação de `edit_file` ou `write_file` na extensão, o cartão ganha o botão "Ver diff". Ele abre `vscode.diff` entre o arquivo atual e a versão proposta (documento virtual por `TextDocumentContentProvider` com esquema `rfcode-proposed`).
 **Aceite:** a função que calcula o conteúdo proposto (aplicar `old_string` → `new_string`) fica em `lib/` e tem teste.
 
-### [ ] T14: Comando /init (RFCODE.md)
+### [x] T14: Comando /init (RFCODE.md)
+> Feito à mão em 2026-10-10/11: comando /init no painel e na CLI (INIT_PROMPT em lib/prompts.js).
 Na CLI, crie `/init`. Ele pede ao agente para analisar o projeto e escrever `RFCODE.md` com: visão geral, como rodar, como testar, estrutura e convenções. O prompt fica em `lib/prompts.js`.
 **Aceite:** teste que confere que `lib/prompts.js` exporta `INIT_PROMPT` com as seções exigidas.
 
-### [ ] T15: Robustez de tool calls
+### [x] T15: Robustez de tool calls
+> Feito à mão em 2026-10-10/11: lib/jsonfix.js (cercas, vírgula sobrando, aspas simples, quebras de linha, chaves abertas) e nova tentativa em resposta vazia.
 Se os argumentos de uma ferramenta vierem com JSON inválido, tente consertar o JSON (remover crases ou markdown em volta, vírgula sobrando, aspas simples) antes de devolver o erro. Se o modelo responder vazio (sem texto e sem ferramentas) duas vezes seguidas, encerre com uma mensagem clara.
 **Aceite:** testes para o reparo de JSON (`lib/jsonfix.js`) com pelo menos 5 casos.
 
-### [ ] T16: Modo plano (planejar antes de executar)
+### [x] T16: Modo plano (planejar antes de executar)
+> Feito à mão em 2026-10-10/11: /plan e /go (Agent.planOnly); test/commands.test.js.
 Crie um modo em que o agente investiga o código e propõe um plano (com `update_plan`) **sem editar nada**, e só executa depois que o usuário aprova. Na CLI, `/plan <pedido>` entra no modo e `/go` aprova. No Agent, adicione a opção `planOnly`: enquanto estiver ativa, as ferramentas que mudam algo são negadas com a mensagem "modo plano: apenas investigue e proponha o plano".
 **Aceite:** teste com `fetch` simulado: com `planOnly`, um `write_file` é negado e o arquivo não é criado; com `planOnly` desligado, o mesmo pedido cria o arquivo.
 
-### [ ] T17: Permissões configuráveis
+### [x] T17: Permissões configuráveis
+> Feito à mão em 2026-10-10/11: lib/permissions.js (allow/deny) + botão "Sempre permitir" no painel e opção [p] na CLI.
 Leia `~/.rfcode/settings.json` (respeitando `RFCODE_HOME`) com `{ "allow": ["run_command:npm test", "edit_file:src/**"], "deny": ["run_command:rm *"] }`. As regras `allow` dispensam a aprovação e as `deny` negam sempre; os padrões usam `*` e `**`. Crie `lib/permissions.js` com `decide(tool, args, rules)`, que retorna 'allow', 'deny' ou 'ask', e use no Agent antes de chamar `approve`.
 **Aceite:** `test/permissions.test.js` com pelo menos 6 casos (allow, deny, deny vence allow, glob de caminho, comando com argumentos, ask padrão).
 
@@ -225,15 +234,18 @@ Leia `~/.rfcode/settings.json` (respeitando `RFCODE_HOME`) com `{ "allow": ["run
 Salve as últimas 200 entradas da CLI em `~/.rfcode/history` e carregue no readline (setas ↑ e ↓ entre sessões). Crie `lib/history.js` com `load()` e `append(line)`, ignorando linhas vazias e duplicadas em sequência.
 **Aceite:** teste com `RFCODE_HOME` temporário para append, load, limite de 200 e o caso de duplicadas.
 
-### [ ] T19: Ferramenta multi_edit
+### [x] T19: Ferramenta multi_edit
+> Feito à mão em 2026-10-10/11: multi_edit atômico; test/files.test.js.
 Crie a ferramenta `multi_edit({ path, edits: [{ old_string, new_string, replace_all? }] })`. Ela aplica as edições em sequência na memória e só grava se **todas** derem certo; se uma falhar, nada muda e o erro diz qual edição falhou (índice). Reaproveite a lógica de `edit_file` (inclusive CRLF) e coloque `multi_edit` em `NEEDS_APPROVAL` e em `describeCall` (`MultiEdit(path, n edições)`).
 **Aceite:** `test/multiedit.test.js` cobre: 3 edições aplicadas; falha na 2ª deixa o arquivo intacto; replace_all; arquivo com CRLF.
 
-### [ ] T20: Comandos em segundo plano
+### [x] T20: Comandos em segundo plano
+> Feito à mão em 2026-10-10/11: run_command background + command_output/command_stop.
 Em `run_command`, aceite `background: true`: o comando inicia, recebe um id (`bg1`, `bg2`…) e a ferramenta retorna na hora. Crie as ferramentas `command_output({ id })` (saída acumulada desde a última leitura, e se ainda está rodando) e `command_stop({ id })`. Mate todos os processos de fundo em `agent.abort()` e quando o processo sair.
 **Aceite:** teste que inicia `node -e "setInterval(()=>console.log('tick'),50)"` em segundo plano, lê a saída contendo "tick", para o processo e confirma que ele terminou.
 
-### [ ] T21: Memória em camadas e /memory
+### [x] T21: Memória em camadas e /memory
+> Feito à mão em 2026-10-10/11: memória do usuário em ~/.rfcode/MEMORIA.md, ferramenta remember e /memory (lib/memory.js).
 Junte no prompt do sistema, nesta ordem e com títulos:
 1. `~/.rfcode/RFCODE.md` (preferências do usuário, respeitando `RFCODE_HOME`);
 2. o RFCODE.md/CLAUDE.md/AGENTS.md da raiz do projeto;
@@ -246,19 +258,23 @@ Crie `lib/memory.js` com `collectMemory(cwd, home, visitedDirs)` e `remember(tex
 Em `~/.rfcode/settings.json` e `<projeto>/.rfcode/settings.json`, aceite `{ "hooks": { "preTool": [{ "match": "edit_file|write_file", "command": "..." }], "postTool": [...] } }`. O comando recebe a chamada em JSON no stdin (`{ tool, args, cwd }`). Num preTool, saída com código 2 **bloqueia** a ferramenta e o stderr vira o motivo. Num postTool, a saída é anexada ao resultado. Crie `lib/hooks.js` com `runHooks(fase, tool, args, cwd, config)`.
 **Aceite:** `test/hooks.test.js`: um preTool que bloqueia, um postTool que anexa texto e um match por regex que não se aplica a outra ferramenta.
 
-### [ ] T23: Comandos personalizados
+### [x] T23: Comandos personalizados
+> Feito à mão em 2026-10-10/11: comandos personalizados em .rfcode/commands e ~/.rfcode/commands.
 Arquivos `.rfcode/commands/<nome>.md` (no projeto) e `~/.rfcode/commands/<nome>.md` viram `/nome` na CLI. O conteúdo é o prompt, e `$ARGUMENTS` é trocado pelo texto depois do comando. O `/help` lista os comandos encontrados. Crie `lib/commands.js` com `loadCommands(cwd, home)` e `expandCommand(linha, comandos)`.
 **Aceite:** `test/commands-custom.test.js`: carrega das duas pastas (o projeto vence em nome repetido), expande `$ARGUMENTS` e devolve null para comando inexistente.
 
-### [ ] T24: Subagentes (ferramenta task)
+### [x] T24: Subagentes (ferramenta task)
+> Feito à mão em 2026-10-10/11: ferramenta task (subagente só de leitura, com web_search/web_fetch).
 Crie a ferramenta `task({ description, prompt })`. Ela roda um `Agent` filho com o mesmo modelo, só com ferramentas de leitura (`read_file`, `list_dir`, `glob`, `grep`, `git_status`, `git_diff`, `git_log`) e no máximo 25 passos, e devolve a resposta final do filho. O pai só vê o resumo, o que economiza contexto. Use hooks para mostrar o progresso do filho como `onCommandOutput`.
 **Aceite:** teste com `fetch` simulado: o filho chama `list_dir` e responde, o resultado da ferramenta `task` é essa resposta, e o filho não recebe `write_file` nas ferramentas.
 
-### [ ] T25: Ferramenta ask_user
+### [x] T25: Ferramenta ask_user
+> Feito à mão em 2026-10-10/11: ask_user com botões no painel e opções numeradas na CLI.
 Crie a ferramenta `ask_user({ question, options: [string] })` e o hook `ask(question, options)`, que devolve a resposta escolhida (ou texto livre). Na CLI, mostre as opções numeradas. No painel do VS Code, mostre botões. Sem o hook, a resposta é "(sem resposta: decida com bom senso e siga)".
 **Aceite:** teste com `fetch` simulado e hook `ask` que devolve a opção 2: o resultado da ferramenta contém essa opção.
 
-### [ ] T26: /review
+### [x] T26: /review
+> Feito à mão em 2026-10-10/11: /review (REVIEW_PROMPT em lib/commands.js).
 Na CLI, crie `/review`. Ele pega `git diff` (stage e trabalho) e pede ao agente uma revisão focada em bugs reais (correção, casos de borda, segurança), com arquivo:linha e severidade, **sem editar nada** (use o modo plano da T16, ou ferramentas só de leitura). O prompt fica em `lib/prompts.js` (`REVIEW_PROMPT`).
 **Aceite:** teste que confere que `REVIEW_PROMPT` existe e que a montagem da mensagem inclui o diff.
 
@@ -270,7 +286,8 @@ Na CLI, crie `/review`. Ele pega `git diff` (stage e trabalho) e pede ao agente 
 Enquanto o agente trabalha, o usuário pode mandar mensagens no painel. Elas entram numa fila visível ("na fila: 2") e são enviadas em ordem quando a resposta atual termina. A tecla Esc no campo de texto interrompe a resposta, como o botão Parar. A lógica da fila fica em `media/queue.js` (UMD, testável).
 **Aceite:** `test/queue.test.js` testa enfileirar, retirar na ordem e limpar no Parar.
 
-### [ ] T29: Diagnósticos do VS Code
+### [x] T29: Diagnósticos do VS Code
+> Feito à mão em 2026-10-10/11: get_diagnostics injetada pela extensão via extraTools.
 Quando o agente roda dentro da extensão, ofereça a ferramenta `get_diagnostics({ path? })`. Ela devolve erros e avisos do VS Code (`vscode.languages.getDiagnostics`) no formato `arquivo:linha: [erro] mensagem`. Fora da extensão a ferramenta não existe. Implemente com uma opção `extraTools` no Agent (definições + executor), para que a extensão injete a ferramenta.
 **Aceite:** teste do Agent com `extraTools` simulado: a ferramenta aparece na lista enviada ao modelo e o executor é chamado.
 

@@ -1,26 +1,37 @@
 {
   "name": "rfcode",
-  "displayName": "rfcode",
-  "description": "Agente de código e controle do PC (estilo Claude Code) usando os modelos gratuitos da NVIDIA",
-  "version": "1.2.0",
+  "displayName": "rfcode — agente de IA grátis (NVIDIA)",
+  "description": "Agente de IA gratuito com modelos da NVIDIA: edita código, roda testes, cria PowerPoint, Word e vídeos narrados, navega na web, controla o PC e funciona pelo celular.",
+  "version": "1.8.0",
   "publisher": "renan",
   "license": "MIT",
   "icon": "media/logo.png",
   "engines": {
-    "vscode": "^1.85.0",
+    "vscode": "^1.90.0",
     "node": ">=18"
   },
   "categories": [
     "AI",
     "Chat",
-    "Programming Languages"
+    "Programming Languages",
+    "Other"
   ],
   "keywords": [
-    "nvidia",
-    "agent",
     "ai",
+    "agent",
+    "coding agent",
+    "nvidia",
+    "nemotron",
+    "free",
+    "gratis",
     "chat",
-    "nemotron"
+    "copilot",
+    "claude code",
+    "powerpoint",
+    "pptx",
+    "video",
+    "automation",
+    "portugues"
   ],
   "main": "./extension/extension.js",
   "bin": {
@@ -70,11 +81,25 @@
       },
       {
         "command": "rfcode.selfImprove",
-        "title": "rfcode: Auto-melhoria (loop do SDD)"
+        "title": "rfcode (dev): Auto-melhoria (loop do SDD)"
       },
       {
         "command": "rfcode.dashboard",
-        "title": "rfcode: Painel de auto-melhoria"
+        "title": "rfcode (dev): Painel de auto-melhoria"
+      },
+      {
+        "command": "rfcode.history",
+        "title": "rfcode: Histórico de conversas",
+        "icon": "$(history)"
+      },
+      {
+        "command": "rfcode.remote",
+        "title": "rfcode: Controle remoto pelo celular",
+        "icon": "$(device-mobile)"
+      },
+      {
+        "command": "rfcode.remoteStop",
+        "title": "rfcode: Desligar controle remoto"
       }
     ],
     "menus": {
@@ -89,7 +114,27 @@
         {
           "command": "rfcode.newChat",
           "when": "view == rfcode.chat",
-          "group": "navigation"
+          "group": "navigation@1"
+        },
+        {
+          "command": "rfcode.history",
+          "when": "view == rfcode.chat",
+          "group": "navigation@2"
+        },
+        {
+          "command": "rfcode.remote",
+          "when": "view == rfcode.chat",
+          "group": "navigation@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "rfcode.selfImprove",
+          "when": "config.rfcode.developerMode"
+        },
+        {
+          "command": "rfcode.dashboard",
+          "when": "config.rfcode.developerMode"
         }
       ]
     },
@@ -108,8 +153,20 @@
         },
         "rfcode.repoPath": {
           "type": "string",
-          "default": "C:/Users/user/Desktop/Projetos/rfcode",
-          "description": "Repositório git do rfcode usado pelo loop de auto-melhoria (precisa conter scripts/self-improve.js e docs/SDD.md)."
+          "default": "",
+          "description": "(Desenvolvimento) Clone do repositório do rfcode usado pela auto-melhoria. Só vale com rfcode.developerMode ligado."
+        },
+        "rfcode.remotePort": {
+          "type": "number",
+          "default": 7433,
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Porta do controle remoto pelo celular. Se estiver ocupada, o rfcode usa outra livre."
+        },
+        "rfcode.developerMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Mostra os comandos de desenvolvimento do próprio rfcode (auto-melhoria e painel do SDD)."
         }
       }
     }
@@ -119,5 +176,10 @@
     "test": "node --test \"test/**/*.test.js\"",
     "self-improve": "node scripts/self-improve.js",
     "painel": "node scripts/dashboard.js --open"
+  },
+  "pricing": "Free",
+  "galleryBanner": {
+    "color": "#0F1115",
+    "theme": "dark"
   }
 }

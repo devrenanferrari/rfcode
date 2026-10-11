@@ -1,119 +1,122 @@
-# rfcode
+# rfcode — agente de IA gratuito para código e automação
 
-Agente de código e de controle do PC, no estilo Claude Code, que usa os modelos gratuitos da NVIDIA (`integrate.api.nvidia.com`).
-Funciona como **extensão do VS Code** (painel de chat na barra lateral) e como **CLI** no terminal. Não tem dependências.
+O rfcode é um agente no estilo do Claude Code que roda **de graça** com os modelos da NVIDIA. Ele lê e edita o seu projeto, roda testes, usa git, cria **PowerPoint, Word e vídeos narrados**, navega em sites e opera programas do Windows. Ele sempre pede a sua aprovação antes de mudar qualquer coisa.
 
-## API key
+> **English:** free AI coding agent for VS Code powered by NVIDIA's free models. Edits code, runs tests, creates slides, documents and narrated videos, browses the web and can be controlled from your phone. UI in Brazilian Portuguese.
 
-Na primeira vez, o rfcode pede uma API key da NVIDIA (crie a sua em https://build.nvidia.com → "Get API Key") e valida a chave antes de aceitar.
-- Extensão: a chave fica no armazenamento seguro do VS Code. Para trocar, use o comando `rfcode: Configurar API key da NVIDIA`.
-- CLI: a chave fica em `~/.rfcode/config.json`. Para trocar, use `/key` ou `rfcode --key`.
-- A extensão reaproveita a chave da CLI se ela já existir.
+## Começar em 1 minuto
 
-## Extensão do VS Code
+1. Instale a extensão e clique no ícone do **rfcode** na barra lateral.
+2. Crie uma chave grátis em [build.nvidia.com](https://build.nvidia.com) → **Get API Key** (começa com `nvapi-`).
+3. Cole a chave quando o rfcode pedir. Ela fica no armazenamento seguro do VS Code.
+4. Peça o que quiser: *"explique este projeto"*, *"escreva testes para o módulo de login"*, *"crie uma apresentação de 8 slides sobre este projeto"*.
 
-Instalar ou atualizar:
-```powershell
-code --install-extension C:\Users\user\Desktop\Projetos\rfcode\rfcode-1.1.0.vsix --force
+## O que ele faz
+
+| | |
+|---|---|
+| **Código** | lê, procura, edita (inclusive várias edições atômicas num arquivo), roda comandos e testes, usa git, desfaz alterações |
+| **Documentos** | cria PowerPoint com design pronto (5 temas, 8 tipos de slide), Word a partir de markdown, e lê PDF, Word, PowerPoint e Excel |
+| **Vídeos** | cria vídeos animados com narração em português e legendas (narração no Windows). Sai em WebM, ou em MP4 se o ffmpeg estiver instalado |
+| **Pesquisa** | pesquisa na internet sozinho e cita as fontes; para pesquisas grandes, manda **subagentes** investigarem e trabalha a partir do relatório |
+| **Web** | abre um Chrome próprio, lê a página como texto e clica, preenche e navega. Botões de enviar, pagar ou excluir sempre pedem confirmação |
+| **Assistente** | lembra das suas preferências entre conversas (`/memory`), pergunta com botões quando a decisão é sua e resume conversas longas sozinho |
+| **Dev** | lê os erros e avisos do VS Code, mostra o **diff no editor** antes de você aprovar, roda servidores em segundo plano e aprende regras do tipo "sempre permitir `npm test`" |
+| **PC (Windows)** | lista e controla janelas, lê a tela por OCR local, clica em botões, digita e usa atalhos. Nenhuma imagem da tela sai do computador |
+| **Celular** | controle remoto pelo celular na mesma rede Wi-Fi, com QR code |
+
+## Comandos com `/`
+
+Digite `/` no campo de mensagem para ver a lista. Use as setas para escolher e Enter ou Tab para confirmar.
+
+| Comando | O que faz |
+|---|---|
+| `/help` | lista os comandos |
+| `/new` | começa uma conversa nova (também `/clear`) |
+| `/history` | abre o histórico de conversas (também `/resume`) |
+| `/model [id]` | mostra ou troca o modelo |
+| `/auto` | liga ou desliga a aprovação automática |
+| `/undo` | desfaz a última alteração de arquivo do agente |
+| `/plan <pedido>` | **modo plano**: investiga e propõe um plano sem alterar nada |
+| `/go` | aprova o plano e executa |
+| `/init` | cria o `RFCODE.md` com as instruções do projeto |
+| `/review` | revisa o `git diff` atual em busca de bugs |
+| `/compact` | resume a conversa para liberar contexto |
+| `/memory [texto]` | mostra o que o rfcode lembra sobre você, ou guarda um texto |
+| `/remote` | liga o controle remoto pelo celular |
+| `/key` | troca a API key |
+
+**Comandos seus:** crie `.rfcode/commands/<nome>.md` no projeto (ou `~/.rfcode/commands/` para todos os projetos) com o texto do pedido. `$ARGUMENTS` é trocado pelo que você escrever depois do comando. Uma primeira linha `description: ...` aparece no menu.
+
+```markdown
+description: Escreve testes para um arquivo
+Escreva testes para $ARGUMENTS seguindo o padrão de testes deste projeto e rode a suíte.
 ```
-Para gerar o pacote de novo: `npx @vscode/vsce package --allow-missing-repository --skip-license`.
 
-- Clique no ícone do **rfcode** na barra de atividades (à esquerda) ou rode `Ctrl+Shift+P` → `rfcode: Abrir chat`.
-- Enter envia a mensagem e Shift+Enter quebra a linha.
-- Edições, comandos e ações no PC mostram um cartão com **Permitir**, **Permitir tudo** e **Negar**. A caixa **auto** no topo aprova tudo automaticamente.
-- Clique no nome de um arquivo num cartão para abrir o arquivo no editor.
-- O seletor no topo troca o modelo. Também dá para mudar em Configurações → `rfcode.model`.
-- No editor, selecione um trecho, clique com o botão direito e escolha **rfcode: Perguntar sobre a seleção**.
-- `rfcode: Abrir no terminal` abre a versão CLI.
+## Controle remoto pelo celular
+
+1. Digite `/remote` (ou `Ctrl+Shift+P` → **rfcode: Controle remoto pelo celular**).
+2. Leia o QR code com a câmera do celular, que precisa estar **no mesmo Wi-Fi** do PC.
+3. No celular aparece o mesmo painel: você conversa, aprova ações, vê o plano, abre o histórico e usa os comandos `/`. Tudo fica sincronizado com o VS Code.
+
+Na primeira vez o Windows pode pedir para liberar o acesso à rede: escolha **Redes privadas**. O link tem um token secreto, e quem tiver o link controla o rfcode no PC, então não compartilhe. Para desligar, use **Desligar** no cartão do QR code ou clique em *rfcode remoto* na barra de status.
+
+## Histórico
+
+Toda conversa é salva. O ícone de relógio no topo do painel lista as conversas por data, com busca. Um clique reabre a conversa exatamente como estava, e você continua de onde parou.
+
+## Segurança
+
+- Edições, comandos, commits, criação de arquivos e ações no PC ou em sites mostram um cartão com **Permitir**, **Sempre** e **Negar**.
+- O modo **Auto** aprova tudo, exceto enviar, pagar, excluir ou publicar em sites, que sempre pedem confirmação.
+- O agente não instala programas sem você pedir e trata o conteúdo de arquivos e páginas como dado, não como ordem.
+- Automatizar ações em sites pode violar os termos de uso deles (o LinkedIn, por exemplo, proíbe bots). Use com moderação.
+
+## Regras de permissão
+
+No cartão de aprovação, **Sempre permitir** grava uma regra para aquela ação não pedir mais aprovação. Você também pode escrever as regras em `~/.rfcode/settings.json` (vale para tudo) ou em `.rfcode/settings.json` (só no projeto):
+
+```json
+{
+  "allow": ["run_command:npm test*", "run_command:git status*", "edit_file:src/**"],
+  "deny": ["run_command:rm -rf*", "run_command:git push*"]
+}
+```
+`deny` sempre vence `allow` e bloqueia mesmo no modo Auto.
+
+## Pesquisa na internet
+
+A pesquisa funciona sem chave, usando DuckDuckGo e Bing com filtro de relevância. Se esses buscadores limitarem as pesquisas, o agente pesquisa pelo navegador. Para pesquisas mais confiáveis, crie uma chave grátis da [Brave Search API](https://brave.com/search/api/) (2.000 pesquisas por mês) e coloque em `~/.rfcode/config.json` como `"searchApiKey": "..."`.
+
+## Preencher formulários com os seus dados
+
+Crie `~/.rfcode/perfil.md` com os dados que o agente pode usar em formulários: nome, contato, cidade, experiência, formação, preferências de vaga e respostas padrão. O agente **nunca inventa** dados pessoais: se faltar algo, ele pergunta.
+
+## Modelos
+
+O seletor no topo do painel troca o modelo (ou use `/model`). Modelos testados com ferramentas:
+- `nvidia/nemotron-3-super-120b-a12b`: padrão, rápido;
+- `z-ai/glm-5.3`: mais forte em tarefas longas e conteúdo, mais lento;
+- `openai/gpt-oss-20b`: muito rápido, mais simples.
 
 ## CLI
 
-```powershell
-cd C:\Users\user\Desktop\Projetos\rfcode; npm link   # uma vez
-rfcode                        # modo interativo na pasta atual
-rfcode "explique este projeto"
-rfcode -p "rode os testes"    # executa e sai (aprova tudo)
-```
-Comandos: `/help`, `/model`, `/models`, `/key`, `/clear`, `/auto`, `/think`, `/cd`, `/exit`. Ctrl+C interrompe a resposta.
+A extensão também traz o rfcode para o terminal: `Ctrl+Shift+P` → **rfcode: Abrir no terminal**. Lá estão os mesmos comandos `/`, e `rfcode -p "tarefa"` roda uma tarefa e sai.
 
-## Ferramentas do agente
+## Configurações
 
-**Código e sistema:** `read_file`, `write_file`, `edit_file`, `list_dir`, `glob`, `grep`, `run_command` (PowerShell).
+| Configuração | Padrão | O que faz |
+|---|---|---|
+| `rfcode.model` | `nvidia/nemotron-3-super-120b-a12b` | modelo usado |
+| `rfcode.autoApprove` | `false` | aprovar ações sem perguntar |
+| `rfcode.remotePort` | `0` | porta do controle remoto (0 = automática) |
 
-**Controle do PC (Windows):**
-| Ferramenta | O que faz |
-|---|---|
-| `windows` | lista janelas; foca, minimiza, maximiza, restaura ou fecha uma janela |
-| `screen_text` | lê o texto da tela, de uma janela, de uma região ou de uma imagem por OCR local, com as coordenadas de cada linha |
-| `screenshot` | salva um print em PNG |
-| `ui_elements` | lista botões, campos e menus de uma janela (UI Automation) com coordenadas |
-| `ui_click` / `ui_set_text` | clica num elemento ou preenche um campo pelo nome |
-| `mouse` | move, clica, dá duplo clique, clique direito, rola e arrasta |
-| `keyboard` | digita texto e pressiona atalhos (`ctrl+s`, `win+r`, `alt+tab`…) |
-| `open` | abre programas, arquivos, pastas e URLs |
-| `clipboard` | lê ou define a área de transferência |
-| `wait` | espera um tempo |
+## Requisitos
 
-A tela é lida **localmente**: OCR do Windows e UI Automation. Nenhuma imagem da tela é enviada para a NVIDIA; o modelo recebe só o texto e as coordenadas.
-Programas Win32 antigos (como o Bloco de Notas clássico) expõem poucos elementos no `ui_elements`. Nesses casos o agente usa `screen_text` + `mouse`.
+- VS Code 1.90 ou mais novo.
+- Navegador e vídeo: Google Chrome ou Microsoft Edge instalado.
+- Controle do PC e narração dos vídeos: Windows 10 ou 11.
 
-Se existir `RFCODE.md`, `CLAUDE.md` ou `AGENTS.md` na pasta, o conteúdo entra como instruções do projeto.
+Se existir `RFCODE.md`, `CLAUDE.md` ou `AGENTS.md` na pasta do projeto, o conteúdo entra como instruções para o agente.
 
-## Central de auto-melhoria (painel do administrador)
-
-```powershell
-npm run painel        # ou: rfcode --painel   ·   VS Code: "rfcode: Painel de auto-melhoria"
-```
-O painel abre em http://127.0.0.1:4517. Ele só aceita acessos do próprio computador. Nele você:
-- **define a direção**: um texto de foco que o agente recebe como prioridade máxima;
-- **escolhe o que fazer**: "Fazer a seguir", "Rodar só esta", criar uma tarefa nova no SDD ou reabrir uma bloqueada;
-- **inicia e para** rodadas, escolhendo o modelo e quantas tarefas;
-- **acompanha ao vivo**:
-  - a tarefa e o alvo dela;
-  - a fase (Preparar → Entender → Implementar → Testar → Validar → Commit);
-  - o que o agente está fazendo agora e por quê;
-  - o plano com progresso;
-  - os arquivos e as **funções, ferramentas e testes que ele está escrevendo**;
-  - a linha do tempo com o motivo de cada ação;
-  - os testes, os tokens e as rodadas de reparo;
-- **revisa e aceita**: vê o diff de cada commit da branch `self-improve` e faz o merge com um clique.
-
-As rodadas antigas ficam no histórico e podem ser reabertas.
-
-## SDD e auto-melhoria
-
-O `docs/SDD.md` é o documento de design: visão, arquitetura, regras de qualidade e o **backlog** de melhorias.
-O próprio rfcode implementa esse backlog num loop:
-
-```powershell
-npm run self-improve -- --iterations 3            # ou: rfcode --self-improve --iterations 3
-npm run self-improve -- --task T05 --model z-ai/glm-5.3
-```
-No VS Code, use `Ctrl+Shift+P` → **rfcode: Auto-melhoria (loop do SDD)**.
-
-Como o loop funciona:
-- trabalha numa git worktree separada (branch `self-improve`), então a versão instalada não é afetada;
-- usa só as ferramentas de código, sem controle do PC;
-- só pode rodar testes e comandos git de leitura;
-- não pode editar os testes de base, o SDD nem o próprio script;
-- uma tarefa só vira commit se `npm test` passar e o número de testes não diminuir;
-- uma tarefa que falha duas vezes é marcada `[!]` para revisão humana;
-- **nunca faz push nem merge.** Para revisar: `git log --stat main..self-improve`. Para aceitar: `git merge self-improve`.
-
-O log de cada rodada fica em `.self-improve/log.md`. Para acrescentar tarefas, edite a seção 7 do SDD no `main` e faça commit. A cada rodada, o loop junta as novidades de `main` na branch `self-improve`.
-
-## Modelos testados (com tool calling)
-
-- `nvidia/nemotron-3-super-120b-a12b`: padrão, rápido
-- `z-ai/glm-5.3`: mais forte em código, mais lento
-- `openai/gpt-oss-20b`: muito rápido
-
-## Estrutura
-
-```
-lib/agent.js         núcleo: ferramentas de código, streaming da API e loop do agente
-lib/pc.js, pc.ps1    controle do PC (Windows)
-bin/rfcode.js        CLI
-extension/           extensão do VS Code
-media/               interface do painel (webview) e ícones
-```
+Licença MIT.

@@ -4,3 +4,7 @@ rfcode-demo.png
 .worktrees/
 .self-improve/
 painel-*.png
+exemplos/
+.rfcode/
+.claude/
+rfcode-*.vsix
