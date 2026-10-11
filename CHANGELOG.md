@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.0
+
+- Apresentações com gráficos nativos do PowerPoint, editáveis: colunas, empilhado, empilhado 100%, barras, linha, pizza, rosca e cascata, com rótulos diretos, seta de CAGR e seta de diferença.
+- Diagramas: processo, linha do tempo, funil, pirâmide, matriz 2x2 com pontos, ciclo, cartões, hub, Venn, tamanho de mercado (TAM/SAM/SOM), tabela e agenda.
+- Conclusão em destaque, fonte e notas do apresentador em qualquer slide; variação nos indicadores; temas consultoria e papel.
+- Revisão automática do roteiro: aponta slides só de texto, títulos que não dizem a conclusão, falta de fontes e gráficos repetidos.
+- create_pptx aceita a apresentação em arquivo JSON (spec_file) e corrige formatos comuns enviados pelo modelo; tipos desconhecidos geram erro claro em vez de slide em branco.
+- Ferramentas carregadas sob demanda: PowerPoint, navegador, vídeo e controle do PC entram só quando o pedido precisa, reduzindo cerca de 3 mil tokens por chamada.
+- Arquivo não encontrado sugere nomes parecidos da mesma pasta.
+- Comandos no Windows gravam e leem em UTF-8 (redirecionamento com > e saída do Python).
+- Correção de JSON com colchetes trocados ou sobrando.
+
 ## 1.11.0
 
 - Gestão de contexto: compactação incremental antes de cada chamada ao modelo (também no meio de tarefas longas), mantendo literal o trecho recente e sem separar ações dos seus resultados.

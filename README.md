@@ -21,13 +21,17 @@ Na primeira execução, o rfcode pede uma API key da NVIDIA. Gere a sua em [buil
 ## Recursos
 
 - Código: leitura, busca, edição (incluindo várias edições atômicas no mesmo arquivo), execução de comandos e testes, git e desfazer.
-- Documentos: gera PowerPoint (5 temas, 8 tipos de slide) e Word a partir de markdown; lê PDF, Word, PowerPoint e Excel.
+- Documentos: gera apresentações PowerPoint com gráficos e diagramas nativos e editáveis (colunas, empilhado, barras, linha, pizza, rosca e cascata com CAGR e setas de diferença; processo, linha do tempo, funil, pirâmide, matriz 2x2, ciclo, cartões, hub, Venn, TAM/SAM/SOM e tabelas), conclusão em destaque, fontes e notas do apresentador, em 7 temas. Gera Word a partir de markdown e lê PDF, Word, PowerPoint e Excel.
 - Vídeo: gera vídeos com narração em português e legendas. Saída em WebM, ou MP4 quando o ffmpeg está instalado.
 - Pesquisa: busca na web com citação das fontes e subagentes para pesquisas mais amplas.
 - Navegador: controla uma instância própria do Chrome. Envio de formulários, pagamentos e exclusões sempre exigem confirmação.
 - Memória: guarda preferências do usuário entre conversas (`/memory`).
 - Desenvolvimento: lê os diagnósticos do VS Code, abre o diff no editor antes da aprovação e executa processos em segundo plano.
 - Windows: controle de janelas, leitura de tela por OCR local, cliques e teclado. Nenhuma imagem da tela é enviada para fora do computador.
+
+Exemplos de slides gerados (temas consultoria e papel):
+
+![Slides gerados pelo rfcode](docs/img/apresentacoes.png)
 - Controle remoto: uso pelo celular na mesma rede, com pareamento por QR code.
 
 ## Comandos

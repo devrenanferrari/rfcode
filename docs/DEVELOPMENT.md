@@ -25,6 +25,7 @@ lib/tui.js           visual do terminal
 lib/commands.js      comandos "/" (embutidos e personalizados)
 lib/browser.js       navegador via Chrome DevTools Protocol
 lib/office.js        PowerPoint, Word e leitura de documentos (lib/zip.js por baixo)
+lib/pptx-visuals.js  gráficos e diagramas dos slides, desenhados com formas nativas
 lib/video.js         vídeo narrado (voz do Windows + gravação no Chrome)
 lib/remote.js        servidor do controle remoto (lib/qr.js gera o QR code)
 lib/panel.js         HTML do painel, compartilhado pela webview e pelo celular
