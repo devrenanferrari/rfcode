@@ -313,10 +313,25 @@ class ChatViewProvider {
         this.post({ type: 'mode', mode: '' });
         return this.send(GO_PROMPT, '/go');
       case 'init': return this.send(INIT_PROMPT, '/init');
+      case 'entender': return this.send(require('../lib/commands').UNDERSTAND_PROMPT(args), `/entender${args ? ' ' + args : ''}`);
       case 'commit': return this.send(require('../lib/commands').COMMIT_PROMPT + (args ? `\n\nInstruções do usuário: ${args}` : ''), `/commit${args ? ' ' + args : ''}`);
       case 'pr': return this.send(require('../lib/commands').PR_PROMPT + (args ? `\n\nBranch base: ${args}` : ''), `/pr${args ? ' ' + args : ''}`);
+      case 'skills': {
+        try {
+          const r = require('../lib/commands').skillsCommand(args, { cwd: workspaceCwd() });
+          return r.send ? this.send(r.send, `/skills ${args}`) : info(r.text);
+        } catch (e) { return this.post({ type: 'error', text: e.message }); }
+      }
       case 'config': return info(require('../lib/commands').configSummary(workspaceCwd(), agent));
-      case 'mcp': return info(require('../lib/commands').mcpCommand(args, { cwd: workspaceCwd(), agent }).text);
+      case 'mcp': {
+        const r = require('../lib/commands').mcpCommand(args, { cwd: workspaceCwd(), agent });
+        info(r.text);
+        if (r.login && agent) {
+          try { info(await agent.mcpLogin(r.login, (u) => { vscode.env.openExternal(vscode.Uri.parse(u)); info(`Se o navegador não abrir: ${u}`); })); }
+          catch (e) { this.post({ type: 'error', text: e.message }); }
+        }
+        return;
+      }
       case 'review': {
         const r = reviewFor(workspaceCwd());
         if (r.reason) return info('Nada para revisar: ' + r.reason);

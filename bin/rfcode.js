@@ -306,11 +306,16 @@ async function handleCommand(state, cfg, line) {
       return { send: GO_PROMPT };
     case 'init':
       return { send: INIT_PROMPT };
+    case 'entender': return { send: require('../lib/commands').UNDERSTAND_PROMPT(arg) };
     case 'commit': return { send: require('../lib/commands').COMMIT_PROMPT + (arg ? `\n\nInstruções do usuário: ${arg}` : '') };
     case 'pr': return { send: require('../lib/commands').PR_PROMPT + (arg ? `\n\nBranch base: ${arg}` : '') };
     case 'mcp': {
       const r = require('../lib/commands').mcpCommand(arg, { cwd: agent.cwd, agent });
       console.log(r.text.replace(/^/gm, '  '));
+      if (r.login) {
+        try { console.log((await agent.mcpLogin(r.login, (u) => console.log(c.dim(`  Se o navegador não abrir: ${u}`)))).replace(/^/gm, '  ')); }
+        catch (e) { console.log(c.red(`  ${e.message}`)); }
+      }
       return null;
     }
     case 'review': {
@@ -364,6 +369,14 @@ async function handleCommand(state, cfg, line) {
     case 'provider':
       await setupProvider(arg, state, cfg);
       return null;
+    case 'skills': {
+      try {
+        const r = require('../lib/commands').skillsCommand(arg, { cwd: agent.cwd });
+        if (r.send) return { send: r.send };
+        console.log(r.text.replace(/^/gm, '  '));
+      } catch (e) { console.log(c.red('  ' + e.message)); }
+      return null;
+    }
     case 'config': {
       console.log(require('../lib/commands').configSummary(agent.cwd, agent).replace(/^/gm, '  '));
       return null;
@@ -561,6 +574,7 @@ API key: ${CONFIG_FILE} ou variável de ambiente NVIDIA_API_KEY`);
   const pi = argv.indexOf('-p');
   if (pi >= 0) {
     state.agent.autoApprove = true;
+    state.agent.interactive = false; // sem navegador nem perguntas: conectores sem login avisam em vez de abrir o login
     await run(argv.slice(pi + 1).join(' '));
     rl.close();
     process.exit(0);
