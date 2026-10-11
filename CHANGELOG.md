@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.13.0
+
+- Conectores MCP (stdio, HTTP e SSE) no formato do Claude Code e do VS Code, com catálogo pronto: GitHub, Power BI (servidor oficial da Microsoft), Fabric IQ, Microsoft Learn, Context7, PostgreSQL, SQLite, Jira e Confluence, Notion, Slack, Stripe, Supabase, Playwright. Comando `/mcp`.
+- `data_query`: SQL direto em CSV, Excel, JSON e SQLite, com descrição das colunas e gravação do resultado em Excel.
+- `create_xlsx`: planilhas Excel formatadas (cabeçalho, filtro, formatos, fórmulas e totais) e leitura de Excel com datas e números.
+- Git completo: branches, push e pull, stash, merge e rebase com conflitos, show, blame e GitHub (pull requests, issues, Actions). Comandos `/commit` e `/pr`.
+- `http_request` para APIs REST, com segredos por referência ({{NOME}}) escondidos nas respostas.
+- Recursos para empresas: política gerenciada pela TI, auditoria em JSON, hooks antes de ferramentas, depois de edições e ao terminar.
+- Guias de uso (Power BI, dados, git, APIs, conectores) que entram no prompt só quando o assunto aparece.
+- Novos provedores gratuitos: Cerebras, GitHub Models, Hugging Face, SambaNova, Cohere e Cloudflare Workers AI. Novos modelos da NVIDIA testados, entre eles Kimi K3.
+- Configuração: provedores gratuitos primeiro, primeira execução sem exigir a chave da NVIDIA e comando `/config`.
+- Regra `**/arquivo` passa a valer também na raiz do projeto.
+- Resiliência: texto corrompido do provedor é descartado, erros dentro do stream aparecem, o limite de pedidos (429) é respeitado com esperas maiores e, se o modelo continuar falhando, a tarefa segue num modelo reserva (`fallbackModels`).
+- Kimi K3 passa a ser o modelo padrão da NVIDIA, depois de ser o mais eficiente nas tarefas de referência.
+- create_pptx aceita mais variações de formato enviadas pelos modelos (sinônimos de campos, JSON em spec_file).
+
 ## 1.12.0
 
 - Apresentações com gráficos nativos do PowerPoint, editáveis: colunas, empilhado, empilhado 100%, barras, linha, pizza, rosca e cascata, com rótulos diretos, seta de CAGR e seta de diferença.

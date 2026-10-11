@@ -313,6 +313,10 @@ class ChatViewProvider {
         this.post({ type: 'mode', mode: '' });
         return this.send(GO_PROMPT, '/go');
       case 'init': return this.send(INIT_PROMPT, '/init');
+      case 'commit': return this.send(require('../lib/commands').COMMIT_PROMPT + (args ? `\n\nInstruções do usuário: ${args}` : ''), `/commit${args ? ' ' + args : ''}`);
+      case 'pr': return this.send(require('../lib/commands').PR_PROMPT + (args ? `\n\nBranch base: ${args}` : ''), `/pr${args ? ' ' + args : ''}`);
+      case 'config': return info(require('../lib/commands').configSummary(workspaceCwd(), agent));
+      case 'mcp': return info(require('../lib/commands').mcpCommand(args, { cwd: workspaceCwd(), agent }).text);
       case 'review': {
         const r = reviewFor(workspaceCwd());
         if (r.reason) return info('Nada para revisar: ' + r.reason);
@@ -529,10 +533,19 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
     const cfg = loadConfig();
     if (!id) {
       const nv = (await this.context.secrets.get(SECRET_KEY)) || cfg.apiKey;
-      const items = Object.entries(providers.PROVIDERS).map(([pid, p]) => {
-        const ready = pid === 'nvidia' ? !!nv : p.needsKey === false ? (pid === 'custom' ? !!providers.baseUrlFor('custom', cfg) : null) : !!providers.keyFor(pid, cfg);
-        return { label: p.name, description: ready === true ? 'configurado' : p.local ? 'roda no seu computador' : p.free ? 'tem camada gratuita' : '', pid };
-      });
+      const item = ([pid, p]) => {
+        const ready = pid === 'nvidia' ? !!nv : p.needsKey === false ? (pid === 'custom' ? !!providers.baseUrlFor('custom', cfg) : null) : !!providers.keyFor(pid, cfg, { command: false });
+        return { label: p.name, description: ready === true ? 'configurado' : '', detail: p.freeNote || (p.local ? 'roda no seu computador, sem internet' : ''), pid };
+      };
+      const all = Object.entries(providers.PROVIDERS);
+      const sep = (label) => ({ label, kind: vscode.QuickPickItemKind.Separator });
+      // gratuitos primeiro
+      const items = [
+        sep('Gratuitos'), ...all.filter(([, p]) => p.free && !p.local).map(item),
+        sep('Pagos'), ...all.filter(([id, p]) => !p.free && !p.local && id !== 'custom').map(item),
+        sep('No seu computador'), ...all.filter(([, p]) => p.local).map(item),
+        sep('Outro'), item(['custom', providers.PROVIDERS.custom]),
+      ];
       const pick = await vscode.window.showQuickPick(items, { title: 'rfcode: provedor de modelos', placeHolder: 'Escolha o provedor' });
       if (!pick) return null;
       id = pick.pid;
@@ -550,9 +563,20 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
       c.baseUrls = { ...(c.baseUrls || {}), custom: url.trim() };
       saveConfig(c);
     }
+    if (p.needsAccount) {
+      const acc = await vscode.window.showInputBox({ title: `rfcode: ${p.needsAccount}`, prompt: `${p.needsAccount} (no painel de ${p.name})`, value: (cfg.vars || {})[p.needsAccount] || '', ignoreFocusOut: true });
+      if (!acc) return null;
+      const c = loadConfig(); c.vars = { ...(c.vars || {}), [p.needsAccount]: acc.trim() }; saveConfig(c);
+    }
+    // GitHub Models: aproveita o login do GitHub CLI quando existe
+    if (p.keyCommand && !providers.keyFor(id, cfg, { command: false }) && providers.keyFor(id, { useKeyCommand: { [id]: true } })) {
+      const use = await vscode.window.showQuickPick(['Usar o login do GitHub CLI (gh)', 'Informar um token'], { title: `rfcode: ${p.name}` });
+      if (!use) return null;
+      if (use.startsWith('Usar')) { const c = loadConfig(); c.useKeyCommand = { ...(c.useKeyCommand || {}), [id]: true }; saveConfig(c); }
+    }
     if (id === 'nvidia') {
       if (!(await this.getApiKey(true))) return null;
-    } else if (p.needsKey !== false || id === 'custom') {
+    } else if ((p.needsKey !== false || id === 'custom') && !providers.keyFor(id, loadConfig())) {
       const input = await vscode.window.showInputBox({
         title: `rfcode: API key de ${p.name}`, password: true, ignoreFocusOut: true,
         prompt: p.keyUrl ? `Gere a chave em ${p.keyUrl}` : 'API key (deixe vazio se o servidor não exigir)',

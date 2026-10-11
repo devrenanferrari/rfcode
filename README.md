@@ -20,7 +20,12 @@ Na primeira execução, o rfcode pede uma API key da NVIDIA. Gere a sua em [buil
 
 ## Recursos
 
-- Código: leitura, busca, edição (incluindo várias edições atômicas no mesmo arquivo), execução de comandos e testes, git e desfazer.
+- Código: leitura, busca, edição (incluindo várias edições atômicas no mesmo arquivo), execução de comandos e testes e desfazer.
+- Git e GitHub: branches, commit, push e pull, stash, merge e rebase com resolução de conflitos, blame, pull requests, issues e logs do GitHub Actions (`/commit`, `/pr`).
+- Dados: SQL direto em CSV, Excel, JSON e bancos SQLite, cruzando arquivos, e planilhas Excel formatadas com fórmulas e totais.
+- Conectores (MCP): GitHub, Power BI, Jira, Confluence, Notion, Slack, PostgreSQL, Stripe, Supabase e qualquer servidor MCP, no mesmo formato do Claude Code e do VS Code (`/mcp`).
+- APIs: chamadas REST para sistemas internos, com tokens por referência que nunca aparecem na conversa.
+- Empresas: regras de permissão, hooks, política gerenciada pela TI e auditoria de cada ação. Veja [docs/EMPRESAS.md](docs/EMPRESAS.md).
 - Documentos: gera apresentações PowerPoint com gráficos e diagramas nativos e editáveis (colunas, empilhado, barras, linha, pizza, rosca e cascata com CAGR e setas de diferença; processo, linha do tempo, funil, pirâmide, matriz 2x2, ciclo, cartões, hub, Venn, TAM/SAM/SOM e tabelas), conclusão em destaque, fontes e notas do apresentador, em 7 temas. Gera Word a partir de markdown e lê PDF, Word, PowerPoint e Excel.
 - Vídeo: gera vídeos com narração em português e legendas. Saída em WebM, ou MP4 quando o ffmpeg está instalado.
 - Pesquisa: busca na web com citação das fontes e subagentes para pesquisas mais amplas.
@@ -53,6 +58,10 @@ Digite `/` no campo de mensagem para abrir a lista.
 | `/go` | Executa o plano aprovado |
 | `/init` | Cria o `RFCODE.md` com as instruções do projeto |
 | `/review` | Revisa o `git diff` atual |
+| `/commit [instruções]` | Revisa as mudanças e cria o commit |
+| `/pr [base]` | Cria branch, commit, push e abre o pull request |
+| `/mcp [add\|remove\|tools]` | Conectores: lista, adiciona do catálogo e remove |
+| `/config` | Mostra toda a configuração e onde fica cada arquivo |
 | `/compact` | Resume a conversa para liberar contexto |
 | `/memory [texto]` | Mostra ou acrescenta itens na memória |
 | `/remote` | Liga o controle remoto |
@@ -105,22 +114,28 @@ O modelo é escolhido no seletor do painel, que agrupa os modelos por provedor, 
 | Provedor | Prefixo do modelo | Observação |
 |---|---|---|
 | NVIDIA | sem prefixo | Padrão, gratuito |
-| OpenRouter | `openrouter:` | Acesso a vários modelos com uma chave |
+| OpenRouter | `openrouter:` | Vários modelos com uma chave; os terminados em `:free` são gratuitos |
 | Groq | `groq:` | Camada gratuita, muito rápido |
+| Cerebras | `cerebras:` | Camada gratuita, muito rápido |
+| GitHub Models | `github:` | Gratuito com limites; usa o login do GitHub CLI |
+| Hugging Face | `huggingface:` | Créditos mensais gratuitos |
+| SambaNova | `sambanova:` | Camada gratuita |
+| Cohere | `cohere:` | Chave de teste gratuita |
+| Cloudflare Workers AI | `cloudflare:` | Cota diária gratuita; pede o Account ID |
 | OpenAI | `openai:` | |
 | Anthropic | `anthropic:` | |
 | Google Gemini | `gemini:` | Camada gratuita |
 | DeepSeek | `deepseek:` | |
-| Mistral | `mistral:` | |
+| Mistral | `mistral:` | Plano gratuito com limites baixos |
 | Ollama | `ollama:` | Local, detectado automaticamente |
 | LM Studio | `lmstudio:` | Local, detectado automaticamente |
 | Personalizado | `custom:` | Qualquer servidor compatível com a API da OpenAI |
 
 Exemplos: `groq:llama-3.3-70b-versatile`, `ollama:qwen3:8b`, `openrouter:openrouter/auto`. O modelo precisa suportar chamadas de ferramenta.
 
-As chaves também podem vir de variáveis de ambiente (`OPENROUTER_API_KEY`, `GROQ_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `MISTRAL_API_KEY`).
+As chaves também podem vir de variáveis de ambiente (`OPENROUTER_API_KEY`, `GROQ_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `MISTRAL_API_KEY`, `CEREBRAS_API_KEY`, `GITHUB_TOKEN`, `HF_TOKEN`, `SAMBANOVA_API_KEY`, `COHERE_API_KEY`, `CLOUDFLARE_API_TOKEN`). Os limites gratuitos mudam com frequência; confira no site de cada provedor.
 
-Modelos da NVIDIA testados: `nvidia/nemotron-3-super-120b-a12b` (padrão, rápido), `z-ai/glm-5.3` (melhor em tarefas longas) e `openai/gpt-oss-20b` (tarefas simples).
+Modelos da NVIDIA testados com as tarefas de referência do rfcode: `moonshotai/kimi-k3` (padrão, o mais eficiente), `nvidia/nemotron-3-super-120b-a12b` (rápido), `nvidia/nemotron-3-ultra-550b-a55b` (raciocínio), `z-ai/glm-5.3` (tarefas longas) e `nvidia/nemotron-3.5-lightning-30b-a3b` (tarefas simples). `/models nvidia` lista todos.
 
 ## Conversas e continuidade
 

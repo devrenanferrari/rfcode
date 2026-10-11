@@ -26,6 +26,12 @@ lib/commands.js      comandos "/" (embutidos e personalizados)
 lib/browser.js       navegador via Chrome DevTools Protocol
 lib/office.js        PowerPoint, Word e leitura de documentos (lib/zip.js por baixo)
 lib/pptx-visuals.js  gráficos e diagramas dos slides, desenhados com formas nativas
+lib/xlsx.js          leitura e escrita de Excel
+lib/data.js          data_query (SQLite em memória) e create_xlsx
+lib/mcp.js           cliente de conectores MCP; lib/mcp-catalog.js tem os prontos
+lib/enterprise.js    política da TI, auditoria e hooks
+lib/tools/           módulos de ferramentas registrados em MODULES (agent.js): dados, git completo, HTTP
+lib/guides/          guias por assunto que entram no prompt quando o assunto aparece
 lib/video.js         vídeo narrado (voz do Windows + gravação no Chrome)
 lib/remote.js        servidor do controle remoto (lib/qr.js gera o QR code)
 lib/panel.js         HTML do painel, compartilhado pela webview e pelo celular

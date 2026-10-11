@@ -71,16 +71,28 @@ async function askApiKey(cfg) {
 async function setupProvider(id, state, cfg) {
   const ids = Object.keys(providers.PROVIDERS);
   if (!id) {
-    console.log(`\n  ${T.bold('Provedores')}`);
     const fresh = loadConfig();
-    ids.forEach((pid, i) => {
-      const p = providers.PROVIDERS[pid];
-      const ready = pid === 'nvidia' ? !!(state.agent.apiKey || fresh.apiKey) : p.needsKey === false ? null : !!providers.keyFor(pid, fresh);
-      const tag = ready === true ? T.green('configurado') : p.local ? T.muted('local') : p.free ? T.muted('camada gratuita') : '';
-      console.log(`    ${T.lime(String(i + 1).padStart(2))} ${p.name} ${tag}`);
-    });
+    // gratuitos primeiro, depois os pagos e os que rodam no computador
+    const groups = [
+      ['Gratuitos', ids.filter((pid) => providers.PROVIDERS[pid].free && !providers.PROVIDERS[pid].local)],
+      ['Pagos', ids.filter((pid) => !providers.PROVIDERS[pid].free && !providers.PROVIDERS[pid].local && pid !== 'custom')],
+      ['No seu computador', ids.filter((pid) => providers.PROVIDERS[pid].local)],
+      ['Outro', ['custom']],
+    ];
+    const order = groups.flatMap(([, g]) => g);
+    let n = 0;
+    for (const [title, g] of groups) {
+      console.log(`\n  ${T.bold(title)}`);
+      for (const pid of g) {
+        const p = providers.PROVIDERS[pid];
+        const ready = pid === 'nvidia' ? !!(state.agent.apiKey || fresh.apiKey) : p.needsKey === false ? null : !!providers.keyFor(pid, fresh, { command: false });
+        const tag = ready === true ? T.green(' configurado') : '';
+        console.log(`    ${T.lime(String(++n).padStart(2))} ${p.name}${tag}${p.freeNote ? T.muted(`  ${p.freeNote}`) : ''}`);
+      }
+    }
+    console.log(T.muted('\n  Os limites gratuitos mudam com frequência; confira no site de cada provedor.'));
     const a = ((await ask(`  número ou nome ${prompt()}`)) || '').trim().toLowerCase();
-    id = /^\d+$/.test(a) ? ids[+a - 1] : a;
+    id = /^\d+$/.test(a) ? order[+a - 1] : a;
   }
   const p = providers.PROVIDERS[id];
   if (!p) { console.log(c.red(`  Provedor desconhecido. Disponíveis: ${ids.join(', ')}`)); return; }
@@ -91,7 +103,20 @@ async function setupProvider(id, state, cfg) {
       if (!url) return;
       const c2 = loadConfig(); c2.baseUrls = { ...(c2.baseUrls || {}), custom: url }; saveConfig(c2);
     }
-    if (p.needsKey !== false || id === 'custom') {
+    if (p.needsAccount) {
+      const acc = ((await ask(`  ${p.needsAccount} (no painel do provedor) ${prompt()}`)) || '').trim();
+      if (!acc) return;
+      const c2 = loadConfig(); c2.vars = { ...(c2.vars || {}), [p.needsAccount]: acc }; saveConfig(c2);
+    }
+    // GitHub Models: se o GitHub CLI já está logado, não precisa de chave
+    if (p.keyCommand && providers.keyFor(id, { useKeyCommand: { [id]: true } })) {
+      const use = ((await ask(`  Usar o login do GitHub CLI (gh) como chave? (S/n) ${prompt()}`)) || 's').trim().toLowerCase();
+      if (!use.startsWith('n')) {
+        const c2 = loadConfig(); c2.useKeyCommand = { ...(c2.useKeyCommand || {}), [id]: true }; saveConfig(c2);
+        console.log(c.green('  ok, usando o login do gh'));
+      }
+    }
+    if ((p.needsKey !== false || id === 'custom') && !providers.keyFor(id, loadConfig())) {
       if (p.keyUrl) console.log(c.dim(`  Gere a chave em ${p.keyUrl}`));
       const key = ((await ask(`  API key de ${p.name}${p.needsKey === false ? ' (vazio se não exigir)' : ''} ${prompt()}`)) || '').trim();
       if (!key && p.needsKey !== false) return;
@@ -281,6 +306,13 @@ async function handleCommand(state, cfg, line) {
       return { send: GO_PROMPT };
     case 'init':
       return { send: INIT_PROMPT };
+    case 'commit': return { send: require('../lib/commands').COMMIT_PROMPT + (arg ? `\n\nInstruções do usuário: ${arg}` : '') };
+    case 'pr': return { send: require('../lib/commands').PR_PROMPT + (arg ? `\n\nBranch base: ${arg}` : '') };
+    case 'mcp': {
+      const r = require('../lib/commands').mcpCommand(arg, { cwd: agent.cwd, agent });
+      console.log(r.text.replace(/^/gm, '  '));
+      return null;
+    }
     case 'review': {
       const r = reviewFor(agent.cwd);
       if (r.reason) { console.log(c.dim('Nada para revisar: ' + r.reason)); return null; }
@@ -332,6 +364,10 @@ async function handleCommand(state, cfg, line) {
     case 'provider':
       await setupProvider(arg, state, cfg);
       return null;
+    case 'config': {
+      console.log(require('../lib/commands').configSummary(agent.cwd, agent).replace(/^/gm, '  '));
+      return null;
+    }
     case 'doctor': {
       out(c.dim('  verificando...\n'));
       const items = await runDoctor({ cfg: loadConfig(), model: agent.model, version: VERSION });
@@ -456,7 +492,20 @@ API key: ${CONFIG_FILE} ou variável de ambiente NVIDIA_API_KEY`);
   if (ki >= 0) argv.splice(ki, 1);
   const { provider } = providers.parseModel(model);
   // a chave da NVIDIA só é pedida quando o modelo é da NVIDIA; outros provedores usam /provider
-  if (provider === 'nvidia' && (!apiKey || ki >= 0)) apiKey = await askApiKey(cfg);
+  // primeira execução: nenhum provedor configurado. Oferece os gratuitos em vez de exigir a chave da NVIDIA.
+  const nothingConfigured = !apiKey && !providers.configuredProviders(cfg).length && ki < 0 && !argv.includes('-p');
+  if (nothingConfigured) {
+    console.log(`\n  ${T.bold('Bem-vindo ao rfcode.')} Para começar, escolha um provedor de IA. Todos abaixo têm uso gratuito:`);
+    console.log(`    ${T.lime('1')} NVIDIA ${T.muted('(recomendado: vários modelos, inclusive Kimi K3 e Nemotron)')}`);
+    console.log(`    ${T.lime('2')} Outro provedor ${T.muted('(Groq, Gemini, Cerebras, GitHub Models, OpenRouter, Hugging Face, Ollama...)')}`);
+    const a = ((await ask(`  1 ou 2 ${prompt()}`)) || '1').trim();
+    if (a === '2') {
+      const tmp = { agent: new Agent({ apiKey: '', model, cwd: process.cwd(), saveSession: false }) };
+      await setupProvider(null, tmp, cfg);
+      model = tmp.agent.model;
+      Object.assign(cfg, loadConfig());
+    } else apiKey = await askApiKey(cfg);
+  } else if (provider === 'nvidia' && (!apiKey || ki >= 0)) apiKey = await askApiKey(cfg);
   else if (provider !== 'nvidia' && providers.PROVIDERS[provider].needsKey !== false && !providers.keyFor(provider, cfg)) {
     console.log(`  ${T.amber('!')} ${T.muted(`falta a API key de ${providers.PROVIDERS[provider].name}: use /provider ${provider}`)}`);
   }
