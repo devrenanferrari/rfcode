@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.1
+- Prints da extensão no README e na página do Marketplace.
+- Nome de exibição sem marcas de terceiros.
+- Testes automáticos em Windows, Linux e macOS e publicação automática a cada versão (GitHub Actions).
+
 ## 1.8.0
 - **Pesquisa na internet** (`web_search`) sem chave: DuckDuckGo, Bing e Chrome com filtro de relevância; Brave Search API opcional.
 - **Subagentes** (`task`): pesquisas amplas em arquivos, git, documentos e web, sem encher o contexto principal.

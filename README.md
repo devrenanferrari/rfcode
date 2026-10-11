@@ -1,12 +1,23 @@
 # rfcode — agente de IA gratuito para código e automação
 
-O rfcode é um agente no estilo do Claude Code que roda **de graça** com os modelos da NVIDIA. Ele lê e edita o seu projeto, roda testes, usa git, cria **PowerPoint, Word e vídeos narrados**, navega em sites e opera programas do Windows. Ele sempre pede a sua aprovação antes de mudar qualquer coisa.
+[![Testes](https://github.com/devrenanferrari/rfcode/actions/workflows/ci.yml/badge.svg)](https://github.com/devrenanferrari/rfcode/actions/workflows/ci.yml)
 
-> **English:** free AI coding agent for VS Code powered by NVIDIA's free models. Edits code, runs tests, creates slides, documents and narrated videos, browses the web and can be controlled from your phone. UI in Brazilian Portuguese.
+O rfcode é um agente de IA que roda **de graça** com os modelos de [build.nvidia.com](https://build.nvidia.com). Ele lê e edita o seu projeto, roda testes, usa git, pesquisa na internet, cria **PowerPoint, Word e vídeos narrados**, navega em sites e opera programas do Windows. Ele sempre pede a sua aprovação antes de mudar qualquer coisa.
+
+> **English:** free AI coding agent for VS Code powered by NVIDIA's free models. Edits code, runs tests, searches the web, creates slides, documents and narrated videos, browses websites and can be controlled from your phone. UI in Brazilian Portuguese.
+
+| Conversa com ações, diff e plano | Comandos com `/` | Perguntas e aprovação |
+|---|---|---|
+| ![Conversa](docs/img/conversa.png) | ![Comandos](docs/img/comandos.png) | ![Assistente](docs/img/assistente.png) |
+
+## Instalar
+
+- **Pelo VS Code:** procure **rfcode** na aba de extensões (`Ctrl+Shift+X`).
+- **Pelo arquivo:** baixe o `.vsix` mais recente em [Releases](https://github.com/devrenanferrari/rfcode/releases) e rode `code --install-extension rfcode.vsix` (ou, no VS Code, `...` na aba de extensões → **Install from VSIX**).
 
 ## Começar em 1 minuto
 
-1. Instale a extensão e clique no ícone do **rfcode** na barra lateral.
+1. Abra o rfcode pelo ícone na barra lateral.
 2. Crie uma chave grátis em [build.nvidia.com](https://build.nvidia.com) → **Get API Key** (começa com `nvapi-`).
 3. Cole a chave quando o rfcode pedir. Ela fica no armazenamento seguro do VS Code.
 4. Peça o que quiser: *"explique este projeto"*, *"escreva testes para o módulo de login"*, *"crie uma apresentação de 8 slides sobre este projeto"*.
@@ -54,6 +65,8 @@ Escreva testes para $ARGUMENTS seguindo o padrão de testes deste projeto e rode
 ```
 
 ## Controle remoto pelo celular
+
+<img src="docs/img/controle-remoto.png" width="380" alt="Cartão do controle remoto com QR code">
 
 1. Digite `/remote` (ou `Ctrl+Shift+P` → **rfcode: Controle remoto pelo celular**).
 2. Leia o QR code com a câmera do celular, que precisa estar **no mesmo Wi-Fi** do PC.

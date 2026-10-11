@@ -1,8 +1,8 @@
 {
   "name": "rfcode",
-  "displayName": "rfcode — agente de IA grátis (NVIDIA)",
-  "description": "Agente de IA gratuito com modelos da NVIDIA: edita código, roda testes, cria PowerPoint, Word e vídeos narrados, navega na web, controla o PC e funciona pelo celular.",
-  "version": "1.8.0",
+  "displayName": "rfcode — agente de IA gratuito",
+  "description": "Agente de IA gratuito para VS Code: edita código, roda testes, pesquisa na web, cria PowerPoint, Word e vídeos narrados, controla o PC e funciona pelo celular. Usa os modelos gratuitos de build.nvidia.com.",
+  "version": "1.8.1",
   "publisher": "renan",
   "license": "MIT",
   "repository": {
@@ -28,18 +28,18 @@
     "ai",
     "agent",
     "coding agent",
-    "nvidia",
+    "assistente",
+    "nvidia nim",
     "nemotron",
     "free",
     "gratis",
     "chat",
-    "copilot",
-    "claude code",
     "powerpoint",
     "pptx",
     "video",
     "automation",
-    "portugues"
+    "portugues",
+    "brasil"
   ],
   "main": "./extension/extension.js",
   "bin": {

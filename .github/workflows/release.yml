@@ -1,0 +1,44 @@
+name: Publicar versão
+
+# Ao enviar uma tag vX.Y.Z (ex.: git tag v1.9.0 && git push --tags):
+# 1. roda os testes; 2. gera o .vsix; 3. cria a release no GitHub com o .vsix;
+# 4. publica no VS Code Marketplace (se o segredo VSCE_PAT existir) e no Open VSX (se OVSX_PAT existir).
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: git config --global user.email "ci@rfcode.dev" && git config --global user.name "rfcode CI"
+      - run: npm test
+      - name: Conferir que a tag bate com a versão do package.json
+        run: |
+          V=$(node -p "require('./package.json').version")
+          [ "v$V" = "${GITHUB_REF_NAME}" ] || { echo "Tag ${GITHUB_REF_NAME} diferente da versão v$V do package.json"; exit 1; }
+      - run: npx --yes @vscode/vsce package -o rfcode.vsix
+      - name: Release no GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NOTES=$(awk "/^## ${GITHUB_REF_NAME#v}\$/{f=1;next} /^## /{f=0} f" CHANGELOG.md)
+          gh release create "$GITHUB_REF_NAME" rfcode.vsix --title "rfcode $GITHUB_REF_NAME" --notes "${NOTES:-Veja o CHANGELOG.md}"
+      - name: VS Code Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        if: env.VSCE_PAT != ''
+        run: npx --yes @vscode/vsce publish --packagePath rfcode.vsix
+      - name: Open VSX
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        if: env.OVSX_PAT != ''
+        run: npx --yes ovsx publish rfcode.vsix -p "$OVSX_PAT"
