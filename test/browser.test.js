@@ -103,3 +103,21 @@ test('browser: preenche e envia um formulário de verdade (Chrome headless)', { 
     try { fs.rmSync(profile, { recursive: true, force: true }); } catch { /* Chrome ainda soltando arquivos */ }
   }
 });
+
+test('browser: reconecta sozinho quando a conexão com o Chrome cai', { skip: !chrome && 'Chrome não encontrado', timeout: 60000 }, async () => {
+  const server = http.createServer((req, res) => { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); res.end('<title>Reconexão</title><h1>Olá</h1>'); });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'rfcode-browser-'));
+  const b = new Browser({ port: 9400 + Math.floor(Math.random() * 400), profile, headless: true });
+  try {
+    await b.run({ action: 'open', url: `http://127.0.0.1:${server.address().port}/` });
+    b.cdp.close(); // simula a queda
+    const snap = await b.run({ action: 'read' });
+    assert.match(snap, /Página: Reconexão/);
+    b.cdp.close();
+    await assert.rejects(b.run({ action: 'click', ref: 1 }), /pode ou não ter acontecido: confira a página/);
+  } finally {
+    await b.quit();
+    server.close();
+  }
+});

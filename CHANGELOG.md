@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.14.1
+
+- Missões: conclusão reconhecida mesmo com markdown ("**MISSÃO CONCLUÍDA**"); o diário descreve as últimas ações quando o ciclo termina no limite de passos; o limite de passos deixa de aparecer como erro; estado ao vivo no /missao status durante o ciclo; opção --passos.
+- Navegador: reconecta sozinho quando a conexão com o Chrome cai; leituras e navegação são repetidas, cliques e digitação não (para não enviar duas vezes).
+- Vídeo: espera a página ficar pronta antes de injetar o gravador (falhava em máquinas lentas).
+
 ## 1.14.0
 
 - Missões: tarefas longas (até dias) em segundo plano, em ciclos com contexto limpo e estado salvo em disco, commits de segurança numa branch própria, computador acordado, espera e nova tentativa em falhas de rede, detecção de ciclos sem progresso e conclusão só depois de verificar. Comandos `/missao` e `rfcode missao`.

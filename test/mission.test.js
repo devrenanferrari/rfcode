@@ -52,7 +52,7 @@ test('missão: ciclo com plano, continuação com contexto limpo, conclusão e r
     assert.match(first, /a\.txt criado; falta b\.txt/);
     if (last.role === 'user') return { tool: 'write_file', args: { path: 'b.txt', content: 'B' } };
     if (last.name === 'write_file') return { tool: 'update_plan', args: { steps: [{ text: 'criar a.txt', status: 'done' }, { text: 'criar b.txt', status: 'done' }] } };
-    return { text: 'MISSÃO CONCLUÍDA\nCriei a.txt e b.txt; confira com dir.' };
+    return { text: '**MISSÃO CONCLUÍDA**\nCriei a.txt e b.txt; confira com dir.' }; // com markdown, como os modelos fazem
   });
   await new Promise((ok) => srv.listen(0, ok));
   const home = HOME;
