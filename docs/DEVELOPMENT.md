@@ -30,6 +30,14 @@ lib/xlsx.js          leitura e escrita de Excel
 lib/data.js          data_query (SQLite em memória) e create_xlsx
 lib/mcp.js           cliente de conectores MCP; lib/mcp-catalog.js tem os prontos
 lib/enterprise.js    política da TI, auditoria e hooks
+lib/mcp-oauth.js     login OAuth dos conectores remotos
+lib/code.js          inteligência de código (símbolos, referências, dependências, busca por significado)
+lib/mission.js       missões longas em ciclos
+lib/schedule.js      tarefas agendadas (Agendador de Tarefas / cron)
+lib/dashboard.js     dashboards HTML interativos
+lib/skills.js        skills (SKILL.md)
+lib/usage.js         registro de tokens e /uso
+action.yml           GitHub Action
 lib/tools/           módulos de ferramentas registrados em MODULES (agent.js): dados, git completo, HTTP
 lib/guides/          guias por assunto que entram no prompt quando o assunto aparece
 lib/video.js         vídeo narrado (voz do Windows + gravação no Chrome)

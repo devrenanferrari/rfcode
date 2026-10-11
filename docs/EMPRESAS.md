@@ -45,6 +45,9 @@ Conectores prontos (`/mcp add <id>`):
 | `supabase` | Supabase | `SUPABASE_ACCESS_TOKEN` |
 | `playwright` | Navegador automatizado | Node.js |
 | `filesystem` | Outra pasta do computador | `PASTA` |
+| `notion`, `linear`, `atlassian`, `sentry`, `asana`, `stripe`, `vercel`, `canva`, `figma`, `paypal`, `intercom`, `monday`, `webflow`, `cloudflare`, `supabase`, `zapier` | Servidores oficiais remotos | login no navegador na primeira vez (`/mcp login <id>`) |
+
+Conectores remotos sem token configurado usam o login OAuth do próprio serviço: o rfcode abre o navegador, você entra e autoriza, e o token fica em `~/.rfcode/mcp-auth.json`, renovado sozinho quando vence. No modo automação (`-p`, missões e agendamentos) não há navegador: faça o login antes com `/mcp login <id>`.
 
 Formato do arquivo:
 
@@ -87,6 +90,25 @@ Comandos: `/mcp` (estado e catálogo), `/mcp add <id>` (ou `/mcp add <nome> <com
 4. O rfcode lê o modelo, cria as medidas com formato e pasta, valida com consultas DAX e mostra os números para você conferir.
 
 Sem o conector, o rfcode ainda ajuda: prepara as tabelas no formato estrela com `data_query` (salvas em Excel), escreve as medidas DAX, edita projetos PBIP (TMDL) e gera o tema JSON do relatório.
+
+## Skills
+
+Skills ensinam ao rfcode os procedimentos da empresa: como fechar o relatório mensal, o padrão de deploy, como revisar contratos. Cada skill é uma pasta com `SKILL.md`:
+
+```markdown
+---
+name: relatorio-mensal
+description: Como montar o relatório mensal de vendas da diretoria
+keywords: relatório mensal, fechamento
+---
+# Relatório mensal
+1. ...
+```
+
+- `.rfcode/skills/` no projeto (versione para o time inteiro), `~/.rfcode/skills/` (só você) e `.claude/skills/` (compatível com o Claude Code).
+- O prompt leva só nome e descrição; o conteúdo entra quando o rfcode chama `use_skill` ou quando uma palavra-chave aparece no pedido.
+- Arquivos na pasta da skill (modelos, checklists, scripts) ficam disponíveis para o rfcode ler.
+- `/skills criar <descrição>` faz o rfcode escrever a skill a partir da sua explicação.
 
 ## Segredos
 

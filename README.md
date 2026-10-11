@@ -21,6 +21,12 @@ Na primeira execução, o rfcode pede uma API key da NVIDIA. Gere a sua em [buil
 ## Recursos
 
 - Código: leitura, busca, edição (incluindo várias edições atômicas no mesmo arquivo), execução de comandos e testes e desfazer.
+- Entender código complexo: mapa de classes e funções em 12 linguagens, definição e referências, leitura de uma função só, grafo de dependências com impacto de cada mudança e busca por significado ("onde o desconto é calculado"). `/entender` explica a arquitetura de um projeto.
+- Missões: tarefas de horas ou dias em segundo plano, em ciclos com estado salvo, commits de segurança numa branch própria e retomada automática (`/missao`). Veja [docs/AUTOMACAO.md](docs/AUTOMACAO.md).
+- Agendamentos: "dias úteis às 8h: resuma os pull requests" roda pelo agendador do sistema, mesmo com o rfcode fechado (`/agendar`).
+- Dashboards: painéis interativos em um único HTML (indicadores, gráficos, tabelas e filtros), abertos ao lado do chat ou no navegador.
+- Skills: procedimentos da empresa ensinados ao rfcode em SKILL.md, no mesmo formato do Claude Code (`/skills`).
+- Automação: `rfcode -p` com JSON, código de saída e entrada por pipe, e uma GitHub Action para revisar pull requests e corrigir testes.
 - Git e GitHub: branches, commit, push e pull, stash, merge e rebase com resolução de conflitos, blame, pull requests, issues e logs do GitHub Actions (`/commit`, `/pr`).
 - Dados: SQL direto em CSV, Excel, JSON e bancos SQLite, cruzando arquivos, e planilhas Excel formatadas com fórmulas e totais.
 - Conectores (MCP): GitHub, Power BI, Jira, Confluence, Notion, Slack, PostgreSQL, Stripe, Supabase e qualquer servidor MCP, no mesmo formato do Claude Code e do VS Code (`/mcp`).
@@ -62,6 +68,12 @@ Digite `/` no campo de mensagem para abrir a lista.
 | `/pr [base]` | Cria branch, commit, push e abre o pull request |
 | `/mcp [add\|remove\|tools]` | Conectores: lista, adiciona do catálogo e remove |
 | `/config` | Mostra toda a configuração e onde fica cada arquivo |
+| `/entender [foco]` | Estuda o projeto e explica a arquitetura e os fluxos principais |
+| `/missao <objetivo> [--horas 24]` | Tarefa longa e autônoma em segundo plano (`status`, `parar`, `retomar`) |
+| `/agendar <quando>: <tarefa>` | Tarefa recorrente ou futura (`/agendamentos`, `/agendamento rodar\|remover <id>`) |
+| `/skills [criar <descrição>]` | Lista as skills ou pede ao rfcode para escrever uma |
+| `/uso` | Tokens usados hoje, na semana e no mês |
+| `/export [arquivo]` | Salva a conversa em Markdown |
 | `/compact` | Resume a conversa para liberar contexto |
 | `/memory [texto]` | Mostra ou acrescenta itens na memória |
 | `/remote` | Liga o controle remoto |

@@ -147,6 +147,18 @@ async function setupProvider(id, state, cfg) {
 }
 
 // ---------- ligação do agente com o terminal ----------
+// aviso do sistema (tarefa agendada terminou)
+function notifyDone(title, text) {
+  try { require('../lib/mission').notify(title, text); } catch { /* opcional */ }
+}
+
+// abre um arquivo gerado (dashboard) no navegador padrão
+function openInBrowser(file) {
+  const { exec } = require('child_process');
+  const q = `"${file}"`;
+  exec(process.platform === 'win32' ? `start "" ${q}` : process.platform === 'darwin' ? `open ${q}` : `xdg-open ${q}`, { windowsHide: true }, () => {});
+}
+
 function cliHooks(state) {
   const spin = new Spinner(out);
   let md = null, reasoningShown = false, cmdOpen = false, cmdTail = '\n';
@@ -159,6 +171,7 @@ function cliHooks(state) {
   };
   const fmtTokens = (n) => (n >= 1000 ? `${(n / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mil` : String(n));
   return {
+    onOpenFile: ({ path: file }) => openInBrowser(file),
     onThinking() { reasoningShown = false; spin.start('pensando'); },
     onResponseStart() { spin.stop(); },
     onReasoning(t) {
@@ -306,6 +319,27 @@ async function handleCommand(state, cfg, line) {
       return { send: GO_PROMPT };
     case 'init':
       return { send: INIT_PROMPT };
+    case 'uso': console.log(require('../lib/usage').usageSummary().replace(/^/gm, '  ')); return null;
+    case 'export': {
+      if (!agent.messages.length) { console.log(c.dim('  A conversa está vazia.')); return null; }
+      console.log(c.green(`  Conversa salva em ${require('../lib/commands').exportConversation(agent, arg)}`));
+      return null;
+    }
+    case 'agendar': {
+      try {
+        const r = require('../lib/commands').scheduleCommand(arg, { cwd: agent.cwd, model: agent.model, srcRoot: path.join(__dirname, '..') });
+        console.log(r.text.replace(/^/gm, '  '));
+        if (r.send) return { send: r.send };
+      } catch (e) { console.log(c.red('  ' + e.message)); }
+      return null;
+    }
+    case 'missao': {
+      try {
+        const r = require('../lib/commands').missionCommand(arg, { cwd: agent.cwd, model: agent.model, aliasUsed: raw, start: (m) => require('../lib/mission').startDetached(agent.cwd, m, { script: __filename }) });
+        console.log(r.text.replace(/^/gm, '  '));
+      } catch (e) { console.log(c.red('  ' + e.message)); }
+      return null;
+    }
     case 'entender': return { send: require('../lib/commands').UNDERSTAND_PROMPT(arg) };
     case 'commit': return { send: require('../lib/commands').COMMIT_PROMPT + (arg ? `\n\nInstruções do usuário: ${arg}` : '') };
     case 'pr': return { send: require('../lib/commands').PR_PROMPT + (arg ? `\n\nBranch base: ${arg}` : '') };
@@ -452,6 +486,69 @@ async function main() {
   const argv = process.argv.slice(2);
   const cfg = loadConfig();
 
+  // execução de tarefa agendada (chamada pelo Agendador de Tarefas ou pelo cron)
+  const si = argv.indexOf('--run-schedule');
+  if (si >= 0) {
+    const sched = require('../lib/schedule');
+    const job = sched.list().find((j) => j.id === argv[si + 1]);
+    if (!job) process.exit(1);
+    process.chdir(job.cwd);
+    const agent = new Agent({ apiKey: cfg.apiKey || process.env.NVIDIA_API_KEY, model: job.model || cfg.model || DEFAULT_MODEL, cwd: job.cwd, saveSession: true });
+    agent.autoApprove = true;
+    agent.interactive = false;
+    let text = '', failed = '';
+    const inicio = new Date().toISOString();
+    const noop = () => {};
+    await agent.send(`Tarefa agendada (${job.quando}), executada sem ninguém olhando: ${job.task}\nNão faça nada irreversível sem regra explícita; registre o que precisar de uma pessoa. Termine com um resumo curto do resultado.`, {
+      onText: (t) => { text += t; }, onResponseStart: () => { text = ''; }, onError: (e) => { failed = String(e); },
+      onAssistantEnd: noop, onThinking: noop, onReasoning: noop, onToolCall: noop, onToolResult: noop, onCommandOutput: noop, onUsage: noop, onPlan: noop, onInfo: noop, onRetry: noop, onAborted: noop, onDone: noop, onQueued: noop,
+      approve: async () => ({ deny: 'Tarefa agendada sem supervisão: ação irreversível não permitida.' }),
+    });
+    const out = sched.outputFile(job.id);
+    require('fs').writeFileSync(out, `# ${job.task}\n\n${new Date(inicio).toLocaleString('pt-BR')} · ${job.quando} · ${agent.model}\n\n${failed ? `**Falhou:** ${failed}\n\n` : ''}${text.trim()}\n`);
+    sched.recordRun(job.id, { inicio, fim: new Date().toISOString(), ok: !failed, saida: out });
+    notifyDone(failed ? 'rfcode: tarefa agendada falhou' : 'rfcode: tarefa agendada concluída', job.task.slice(0, 120));
+    process.exit(failed ? 1 : 0);
+  }
+  if (argv[0] === 'agendar' || argv[0] === 'agendamentos') {
+    const r = require('../lib/commands').scheduleCommand(argv.slice(1).join(' '), { cwd: process.cwd(), model: cfg.model, srcRoot: path.join(__dirname, '..') });
+    console.log(r.text);
+    process.exit(0);
+  }
+
+  // processo da missão (iniciado em segundo plano por /missao ou "rfcode missao")
+  const ri = argv.indexOf('--run-mission');
+  if (ri >= 0) {
+    const mission = require('../lib/mission');
+    const stamp = () => new Date().toLocaleTimeString('pt-BR');
+    const m = await mission.run(process.cwd(), argv[ri + 1], {
+      log: (t) => console.log(`[${stamp()}] ${t}`),
+      createAgent: ({ model }) => new Agent({ apiKey: cfg.apiKey || process.env.NVIDIA_API_KEY, model: model || cfg.model || DEFAULT_MODEL, cwd: process.cwd(), saveSession: true }),
+    });
+    console.log(`[${stamp()}] fim: ${m.status}`);
+    process.exit(0);
+  }
+  if (argv[0] === 'missao' || argv[0] === 'missão' || argv[0] === 'mission') {
+    const { missionCommand } = require('../lib/commands');
+    const mi = argv.indexOf('--model');
+    const model = mi >= 0 ? argv[mi + 1] : cfg.model;
+    if (mi >= 0) argv.splice(mi, 2);
+    if (argv.includes('--primeiro-plano')) {
+      // em primeiro plano (útil em servidores e no CI)
+      const mission = require('../lib/mission');
+      const objetivo = argv.slice(1).filter((a) => a !== '--primeiro-plano').join(' ');
+      let horas = 24; const o = objetivo.replace(/--horas[= ](\d+(?:[.,]\d+)?)/, (x, h) => { horas = Number(h.replace(',', '.')); return ''; }).trim();
+      const m = mission.create(process.cwd(), { objetivo: o, horas, modelo: model });
+      const done = await mission.run(process.cwd(), m.id, { createAgent: ({ model: mm }) => new Agent({ apiKey: cfg.apiKey || process.env.NVIDIA_API_KEY, model: mm || model || DEFAULT_MODEL, cwd: process.cwd(), saveSession: true }) });
+      console.log(require('../lib/mission').status(process.cwd(), done.id));
+      process.exit(done.status === 'concluida' ? 0 : 1);
+    }
+    const start = (m) => require('../lib/mission').startDetached(process.cwd(), m, { script: __filename });
+    const r = missionCommand(argv.slice(1).join(' '), { cwd: process.cwd(), start, model });
+    console.log(r.text);
+    process.exit(0);
+  }
+
   if (argv.includes('--help') || argv.includes('-h')) {
     console.log(`rfcode ${VERSION}
 Agente de IA para o terminal, com os modelos de build.nvidia.com.
@@ -459,7 +556,12 @@ Agente de IA para o terminal, com os modelos de build.nvidia.com.
 Uso:
   rfcode                   modo interativo na pasta atual
   rfcode "tarefa"          executa a tarefa e continua no modo interativo
-  rfcode -p "tarefa"       executa a tarefa e sai (aprovação automática)
+  rfcode -p "tarefa"       executa a tarefa e sai (aprovação automática; código de saída 1 em erro)
+      --json               eventos e resultado em JSON, um por linha (para scripts e CI)
+      --output <arquivo>   grava a resposta final no arquivo
+      --max-steps <n>      limita o número de ações
+      git diff | rfcode -p "revise"   o que chega pela entrada padrão vira contexto
+  rfcode missao "objetivo" --horas 24   tarefa longa e autônoma em segundo plano (status, parar, retomar)
   rfcode -c, --continue    retoma a última conversa desta pasta
   rfcode --key             configura uma nova API key da NVIDIA
   rfcode --model <id>      usa outro modelo (ex.: groq:llama-3.3-70b-versatile, ollama:qwen3:8b)
@@ -575,9 +677,36 @@ API key: ${CONFIG_FILE} ou variável de ambiente NVIDIA_API_KEY`);
   if (pi >= 0) {
     state.agent.autoApprove = true;
     state.agent.interactive = false; // sem navegador nem perguntas: conectores sem login avisam em vez de abrir o login
-    await run(argv.slice(pi + 1).join(' '));
+    // opções do modo automação (CI, scripts, outras ferramentas)
+    const opt = (name) => { const i = argv.indexOf(name); if (i < 0) return null; const v = argv[i + 1]; argv.splice(i, 2); return v; };
+    const flag = (name) => { const i = argv.indexOf(name); if (i < 0) return false; argv.splice(i, 1); return true; };
+    const json = flag('--json');
+    const outFile = opt('--output');
+    const maxSteps = Number(opt('--max-steps'));
+    if (maxSteps > 0) state.agent.maxSteps = maxSteps;
+    let task = argv.slice(argv.indexOf('-p') + 1).join(' ');
+    // conteúdo enviado por pipe (git diff | rfcode -p "revise") entra como contexto
+    if (!process.stdin.isTTY) {
+      const piped = await new Promise((resolve) => { let d = ''; process.stdin.setEncoding('utf8'); process.stdin.on('data', (c) => { d += c; }); process.stdin.on('end', () => resolve(d)); setTimeout(() => resolve(d), 3000); });
+      if (piped.trim()) task += `\n\nConteúdo recebido pela entrada padrão:\n\`\`\`\n${piped.slice(0, 200000)}\n\`\`\``;
+    }
+    let failed = '';
+    let finalText = '';
+    const t0 = Date.now();
+    const emit = (o) => process.stdout.write(JSON.stringify(o) + '\n');
+    const h = json ? {
+      onText: (t) => { finalText += t; }, onResponseStart: () => { finalText = ''; }, onAssistantEnd: () => {}, onThinking: () => {}, onReasoning: () => {},
+      onToolCall: (i) => emit({ type: 'tool', name: i.name, description: i.description }), onToolResult: (r) => emit({ type: 'tool_result', name: r.name, error: !!r.error, output: String(r.output).slice(0, 2000) }),
+      onCommandOutput: () => {}, onUsage: () => {}, onPlan: (p) => emit({ type: 'plan', plan: p }), onInfo: (t) => emit({ type: 'info', text: t }), onRetry: (t) => emit({ type: 'retry', text: t }),
+      onError: (e) => { failed = String(e); emit({ type: 'error', text: failed }); }, onAborted: () => { failed = 'interrompido'; }, onDone: () => {}, onQueued: () => {}, approve: async () => 'yes',
+    } : { ...hooks, onText: (t) => { finalText += t; hooks.onText(t); }, onResponseStart: () => { finalText = ''; hooks.onResponseStart(); }, onError: (e) => { failed = String(e); hooks.onError(e); } };
+    state.t0 = Date.now();
+    await state.agent.send(task, h);
+    if (outFile) require('fs').writeFileSync(path.resolve(outFile), finalText.trim() + '\n');
+    if (json) emit({ type: 'done', ok: !failed, error: failed || undefined, text: finalText.trim(), model: state.agent.model, tokens: state.agent.usage.total, seconds: Math.round((Date.now() - t0) / 1000), files: [...(state.agent.touched || [])] });
     rl.close();
-    process.exit(0);
+    // código de saída: 0 deu certo, 1 erro (CI e scripts sabem que falhou)
+    process.exit(failed ? 1 : 0);
   }
   if (argv.length) await run(argv.join(' '));
 

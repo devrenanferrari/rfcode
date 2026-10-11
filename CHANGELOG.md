@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.14.0
+
+- Missões: tarefas longas (até dias) em segundo plano, em ciclos com contexto limpo e estado salvo em disco, commits de segurança numa branch própria, computador acordado, espera e nova tentativa em falhas de rede, detecção de ciclos sem progresso e conclusão só depois de verificar. Comandos `/missao` e `rfcode missao`.
+- Agendamentos em português ("dias úteis às 8h", "toda segunda às 14h", "a cada 30 minutos", "amanhã às 7h") pelo Agendador de Tarefas do Windows ou pelo cron. Comando `/agendar`.
+- Dashboards interativos em um único HTML, sem internet: indicadores, gráficos SVG, tabelas com ordenação e busca, filtros e exportação. Abrem ao lado do chat no VS Code ou no navegador.
+- Inteligência de código: mapa de símbolos em 12 linguagens, definição, referências, leitura de um símbolo, grafo de dependências com impacto e busca por significado com embeddings da NVIDIA. Comando `/entender`.
+- Skills no formato SKILL.md (compatível com o Claude Code), carregadas sob demanda ou por palavra-chave. Comando `/skills`.
+- Login OAuth nos conectores MCP remotos (descoberta, registro automático e PKCE), `/mcp login` e 16 novos conectores oficiais verificados: Notion, Linear, Atlassian, Sentry, Asana, Stripe, Vercel, Canva, Figma, PayPal, Intercom, monday.com, Webflow, Cloudflare, Supabase e Zapier.
+- Modo automação: `rfcode -p` com `--json`, `--output`, `--max-steps`, entrada por pipe e código de saída 1 em erro; GitHub Action para revisar pull requests e corrigir testes (docs/AUTOMACAO.md).
+- `/uso` com os tokens por dia, semana, mês, modelo e pasta; `/export` salva a conversa em Markdown.
+
 ## 1.13.0
 
 - Conectores MCP (stdio, HTTP e SSE) no formato do Claude Code e do VS Code, com catálogo pronto: GitHub, Power BI (servidor oficial da Microsoft), Fabric IQ, Microsoft Learn, Context7, PostgreSQL, SQLite, Jira e Confluence, Notion, Slack, Stripe, Supabase, Playwright. Comando `/mcp`.

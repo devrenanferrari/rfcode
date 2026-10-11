@@ -1,0 +1,84 @@
+name: rfcode
+description: Agente de IA do rfcode no GitHub Actions - revisa pull requests, corrige testes, faz triagem de issues e executa tarefas.
+author: devrenanferrari
+branding:
+  icon: cpu
+  color: green
+
+inputs:
+  prompt:
+    description: O que o rfcode deve fazer.
+    required: true
+  model:
+    description: Modelo (ex. moonshotai/kimi-k3, groq:openai/gpt-oss-120b). Padrão do rfcode se vazio.
+    required: false
+    default: ''
+  nvidia-api-key:
+    description: Chave da NVIDIA (build.nvidia.com). Para outros provedores, defina a variável de ambiente do provedor no job.
+    required: false
+    default: ''
+  github-token:
+    description: Token para o rfcode usar o GitHub CLI (comentar, abrir PR).
+    required: false
+    default: ${{ github.token }}
+  comment-on-pr:
+    description: Publica o resultado como comentário no pull request.
+    required: false
+    default: 'false'
+  max-steps:
+    description: Limite de ações do agente.
+    required: false
+    default: '60'
+  diff-as-input:
+    description: Envia o diff do pull request como contexto.
+    required: false
+    default: 'false'
+
+outputs:
+  result:
+    description: Resposta final do rfcode.
+    value: ${{ steps.run.outputs.result }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - id: run
+      shell: bash
+      env:
+        NVIDIA_API_KEY: ${{ inputs.nvidia-api-key }}
+        GH_TOKEN: ${{ inputs.github-token }}
+        RFCODE_HOME: ${{ runner.temp }}/rfcode-home
+        RFCODE_PROMPT: ${{ inputs.prompt }}
+        RFCODE_MODEL: ${{ inputs.model }}
+        RFCODE_MAX_STEPS: ${{ inputs.max-steps }}
+        RFCODE_DIFF: ${{ inputs.diff-as-input }}
+        PR_BASE: ${{ github.event.pull_request.base.sha }}
+      run: |
+        mkdir -p "$RFCODE_HOME"
+        OUT="$RUNNER_TEMP/rfcode-result.md"
+        ARGS=(-p "$RFCODE_PROMPT" --output "$OUT" --max-steps "$RFCODE_MAX_STEPS")
+        if [ -n "$RFCODE_MODEL" ]; then ARGS+=(--model "$RFCODE_MODEL"); fi
+        set +e
+        if [ "$RFCODE_DIFF" = "true" ] && [ -n "$PR_BASE" ]; then
+          git fetch --no-tags --depth=100 origin "$PR_BASE" >/dev/null 2>&1
+          git diff "$PR_BASE"...HEAD | node "${{ github.action_path }}/bin/rfcode.js" "${ARGS[@]}"
+        else
+          node "${{ github.action_path }}/bin/rfcode.js" "${ARGS[@]}" < /dev/null
+        fi
+        CODE=$?
+        set -e
+        {
+          echo "result<<RFCODE_EOF"
+          cat "$OUT" 2>/dev/null || true
+          echo "RFCODE_EOF"
+        } >> "$GITHUB_OUTPUT"
+        cat "$OUT" 2>/dev/null >> "$GITHUB_STEP_SUMMARY" || true
+        exit $CODE
+    - if: inputs.comment-on-pr == 'true' && github.event.pull_request.number
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: gh pr comment ${{ github.event.pull_request.number }} --body-file "$RUNNER_TEMP/rfcode-result.md"

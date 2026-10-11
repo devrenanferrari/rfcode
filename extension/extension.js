@@ -313,6 +313,29 @@ class ChatViewProvider {
         this.post({ type: 'mode', mode: '' });
         return this.send(GO_PROMPT, '/go');
       case 'init': return this.send(INIT_PROMPT, '/init');
+      case 'uso': return info(require('../lib/usage').usageSummary());
+      case 'export': {
+        if (!agent || !agent.messages.length) return info('A conversa está vazia.');
+        const out = require('../lib/commands').exportConversation(agent, args);
+        vscode.window.showTextDocument(vscode.Uri.file(out), { preview: false, viewColumn: vscode.ViewColumn.Beside });
+        return info(`Conversa salva em ${out}`);
+      }
+      case 'agendar': {
+        try {
+          const r = require('../lib/commands').scheduleCommand(args, { cwd: workspaceCwd(), model: agent?.model || settings().get('model'), srcRoot: this.context.extensionPath });
+          info(r.text);
+          if (r.send) return this.send(r.send, '/agendamento rodar');
+          return;
+        } catch (e) { return this.post({ type: 'error', text: e.message }); }
+      }
+      case 'missao': {
+        try {
+          const script = path.join(this.context.extensionPath, 'bin', 'rfcode.js');
+          // dentro do VS Code o executável é o Electron: ELECTRON_RUN_AS_NODE faz ele rodar como Node
+          const start = (m) => require('../lib/mission').startDetached(workspaceCwd(), m, { script, env: { ELECTRON_RUN_AS_NODE: '1' } });
+          return info(require('../lib/commands').missionCommand(args, { cwd: workspaceCwd(), start, model: agent?.model || settings().get('model') }).text);
+        } catch (e) { return this.post({ type: 'error', text: e.message }); }
+      }
       case 'entender': return this.send(require('../lib/commands').UNDERSTAND_PROMPT(args), `/entender${args ? ' ' + args : ''}`);
       case 'commit': return this.send(require('../lib/commands').COMMIT_PROMPT + (args ? `\n\nInstruções do usuário: ${args}` : ''), `/commit${args ? ' ' + args : ''}`);
       case 'pr': return this.send(require('../lib/commands').PR_PROMPT + (args ? `\n\nBranch base: ${args}` : ''), `/pr${args ? ' ' + args : ''}`);
@@ -636,8 +659,31 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
   }
 
   // Ganchos do agente para o painel (usados por send e resume).
+  // dashboard (ou outro HTML gerado) num painel ao lado; reaproveita o painel do mesmo arquivo
+  openArtifact(file, title) {
+    this.artifacts = this.artifacts || new Map();
+    let panel = this.artifacts.get(file);
+    if (!panel) {
+      panel = vscode.window.createWebviewPanel('rfcodeArtifact', title || path.basename(file), { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
+        { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [vscode.Uri.file(path.dirname(file))] });
+      panel.onDidDispose(() => this.artifacts.delete(file));
+      panel.webview.onDidReceiveMessage((m) => { if (m && m.type === 'openExternal') vscode.env.openExternal(vscode.Uri.file(file)); });
+      this.artifacts.set(file, panel);
+    }
+    panel.title = title || path.basename(file);
+    // barra fina com o caminho e o botão "Abrir no navegador"
+    const bar = `<div style="position:sticky;top:0;z-index:99;display:flex;gap:8px;align-items:center;justify-content:space-between;padding:6px 12px;font:12px system-ui;background:#1f2937;color:#e5e7eb">`
+      + `<span>${path.basename(file)}</span><button onclick="acquireVsCodeApi().postMessage({type:'openExternal'})" style="font:inherit;padding:3px 10px;border-radius:6px;border:0;cursor:pointer">Abrir no navegador</button></div>`;
+    try {
+      const html = fs.readFileSync(file, 'utf8');
+      panel.webview.html = html.replace(/<body([^>]*)>/i, (m) => `${m}${bar}`);
+    } catch (e) { panel.webview.html = `<p>Não consegui abrir ${file}: ${e.message}</p>`; }
+    panel.reveal(vscode.ViewColumn.Beside, true);
+  }
+
   agentHooks() {
     return {
+      onOpenFile: ({ path: file, title }) => this.openArtifact(file, title),
       onQueued: (texts) => this.post({ type: 'queued', count: texts.length }),
       onThinking: () => this.post({ type: 'thinking' }),
       onResponseStart: () => this.post({ type: 'responseStart' }),
