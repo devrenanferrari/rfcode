@@ -68,13 +68,28 @@
   }
   function fmtTokens(n) {
     if (n < 1000) return `${n} tokens`;
+    if (n >= 1e6) return `${(n / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mi tokens`;
     return `${(n / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mil tokens`;
+  }
+  // Status do rodapé: ocupação do contexto (o que importa para a conversa caber) e o total gasto.
+  let ctxInfo = null;
+  function statusText() {
+    if (!tokens) return '';
+    if (!ctxInfo || !ctxInfo.window) return fmtTokens(tokens);
+    const pct = Math.min(100, Math.round((ctxInfo.context / ctxInfo.window) * 100));
+    return `contexto ${pct}% · ${fmtTokens(tokens)}`;
+  }
+  function updateStatus() {
+    statusEl.textContent = statusText();
+    statusEl.title = ctxInfo && ctxInfo.window
+      ? `Contexto: ${Math.round(ctxInfo.context / 1000)} mil de ${Math.round(ctxInfo.window / 1000)} mil tokens. Acima de 65%, a parte antiga é resumida automaticamente.\nTotal gasto na conversa: ${tokens.toLocaleString('pt-BR')} tokens.`
+      : '';
   }
   function setBusy(b) {
     busy = b;
     sendBtn.classList.toggle('hidden', b);
     stopBtn.classList.toggle('hidden', !b);
-    statusEl.textContent = tokens ? fmtTokens(tokens) : '';
+    updateStatus();
     document.body.classList.toggle('busy', b);
   }
   function showSpinner(text) {
@@ -354,6 +369,18 @@
   }
 
   // ---------- plano ----------
+  // Fim da resposta: o plano sai da barra fixa e vira um cartão recolhido na conversa, no ponto em que aconteceu.
+  // A barra fica livre para o próximo pedido.
+  function archivePlan() {
+    if (planEl.classList.contains('hidden') || !planEl.innerHTML.trim()) return;
+    const card = el('div', 'plan plan-inline collapsed', planEl.innerHTML);
+    card.querySelector('.plan-head')?.addEventListener('click', () => card.classList.toggle('collapsed'));
+    add(card);
+    planEl.classList.add('hidden');
+    planEl.innerHTML = '';
+    planOpen = true;
+  }
+
   function renderPlan(p) {
     const done = p.steps.filter((s) => s.status === 'done').length;
     const pct = p.steps.length ? Math.round((done / p.steps.length) * 100) : 0;
@@ -478,7 +505,7 @@
       case 'replay':
         closeHistory();
         log.innerHTML = '';
-        current = null; tools.clear(); hideSpinner(); tokens = 0;
+        current = null; tools.clear(); hideSpinner(); tokens = 0; ctxInfo = null;
         planEl.classList.add('hidden');
         for (const e of m.events) handle(e);
         scroll(true);
@@ -562,7 +589,7 @@
       }
       case 'cleared':
         state.cwd = m.cwd || state.cwd;
-        current = null; tools.clear(); hideSpinner(); tokens = 0;
+        current = null; tools.clear(); hideSpinner(); tokens = 0; ctxInfo = null;
         planEl.classList.add('hidden');
         resetLog();
         setBusy(false);
@@ -678,13 +705,15 @@
       case 'plan': renderPlan(m.plan); break;
       case 'usage':
         tokens = m.usage.total;
-        statusEl.textContent = fmtTokens(tokens);
+        if (m.usage.window) ctxInfo = { context: m.usage.context, window: m.usage.window };
+        updateStatus();
         break;
       case 'info': hideSpinner(); note('info', m.text); break;
       case 'error': hideSpinner(); note('error', m.text); break;
       case 'done':
         hideSpinner();
         current = null;
+        archivePlan();
         setBusy(false);
         input.focus();
         break;

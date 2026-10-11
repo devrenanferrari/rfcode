@@ -84,7 +84,8 @@ test('compact troca o histórico por um resumo', async () => {
     ag.messages = [{ role: 'user', content: 'a' }, { role: 'assistant', content: 'b' }, { role: 'user', content: 'c' }, { role: 'assistant', content: 'd' }];
     await ag.compact();
     assert.strictEqual(ag.messages.length, 2);
-    assert.match(ag.messages[0].content, /^Resumo da conversa anterior:\n- objetivo: X/);
+    assert.match(ag.messages[0].content, /^Resumo da conversa até aqui[^\n]*\n- objetivo: X/);
+    assert.strictEqual(ag.messages[1].role, 'assistant');
   } finally {
     global.fetch = realFetch;
   }

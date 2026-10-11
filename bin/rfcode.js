@@ -229,7 +229,12 @@ function cliHooks(state) {
       endText();
       endCmd();
       const secs = state.t0 ? Math.round((Date.now() - state.t0) / 1000) : 0;
-      const parts = [state.usage && `${fmtTokens(state.usage.total)} tokens na conversa`, secs && `${secs}s`].filter(Boolean);
+      const u = state.usage;
+      const parts = [
+        u && u.window && `contexto ${Math.min(100, Math.round((u.context / u.window) * 100))}%`,
+        u && `${fmtTokens(u.total)} tokens na conversa`,
+        secs && `${secs}s`,
+      ].filter(Boolean);
       if (parts.length) console.log(`\n  ${T.muted('· ' + parts.join(' · '))}`);
     },
   };

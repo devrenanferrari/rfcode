@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.11.0
+
+- Gestão de contexto: compactação incremental antes de cada chamada ao modelo (também no meio de tarefas longas), mantendo literal o trecho recente e sem separar ações dos seus resultados.
+- O resumo sabe qual é a tarefa em andamento e preserva os dados que ela precisa; pedido atual, plano, anotações, arquivos alterados e processos em segundo plano entram no resumo sem depender do modelo.
+- Ferramenta `note` para anotações de trabalho que nunca são resumidas.
+- Recuperação automática quando a API recusa por excesso de contexto, usando o limite informado no erro.
+- Janela de contexto por provedor e por modelo, configurável em `contextWindow` e `contextWindows`.
+- O rodapé mostra a ocupação do contexto, além do total de tokens.
+- O plano sai da barra fixa ao fim da resposta e fica guardado na conversa.
+
 ## 1.10.0
 
 - Vários provedores de modelo: NVIDIA, OpenRouter, Groq, OpenAI, Anthropic, Gemini, DeepSeek, Mistral, Ollama, LM Studio e servidores compatíveis com a API da OpenAI (`/provider`, `/models`).

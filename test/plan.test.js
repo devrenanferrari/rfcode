@@ -59,7 +59,8 @@ test('uso de tokens é acumulado a partir do chunk de usage', async () => {
   await a.send('1', { onUsage: (u) => { last = u; } });
   await a.send('2', {});
   assert.deepStrictEqual(a.usage, { prompt: 250, completion: 30, total: 280 });
-  assert.deepStrictEqual(last, { prompt: 100, completion: 20, total: 120 });
+  assert.deepStrictEqual({ prompt: last.prompt, completion: last.completion, total: last.total }, { prompt: 100, completion: 20, total: 120 });
+  assert.ok(last.context >= 100 && last.window === 128000, 'informa a ocupação do contexto e a janela do modelo');
   assert.deepStrictEqual(bodies[0].stream_options, { include_usage: true });
 });
 

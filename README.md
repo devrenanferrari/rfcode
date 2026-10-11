@@ -123,6 +123,7 @@ Modelos da NVIDIA testados: `nvidia/nemotron-3-super-120b-a12b` (padrão, rápid
 - Toda conversa é salva a cada passo. Ao abrir o VS Code, o painel volta para a última conversa da pasta. Se uma tarefa foi interrompida (janela recarregada, processo encerrado), o painel oferece continuar de onde parou.
 - Mensagens enviadas enquanto o agente trabalha entram em fila e são consideradas no passo seguinte, sem interromper a tarefa. Se a resposta for interrompida, as mensagens da fila viram o próximo pedido.
 - O histórico (ícone de relógio ou `/history`) permite reabrir qualquer conversa.
+- Conversas longas são compactadas automaticamente: acima de 65% da janela de contexto do modelo, a parte antiga é resumida e o trecho recente fica literal. O rodapé mostra a ocupação do contexto. Detalhes em [docs/CONTEXT.md](docs/CONTEXT.md).
 
 ## Diagnóstico
 

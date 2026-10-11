@@ -418,3 +418,8 @@ body:has(.history:not(.hidden)) footer { display: none; }
 .rs-text span { color: var(--rf-muted); font-size: 0.92em; }
 .rs-actions { display: flex; gap: 6px; }
 .model select optgroup { font-style: normal; color: var(--rf-muted); }
+
+/* plano concluído, guardado na conversa */
+.plan.plan-inline { margin: 0 0 10px; }
+.plan.plan-inline .plan-head { padding: 5px 10px; }
+.plan.plan-inline .ring { animation: none; }
