@@ -34,13 +34,13 @@
   };
 
   const SUGGESTIONS = [
-    { icon: I.book, title: 'Explique este projeto', sub: 'O que faz, como está organizado e como rodar',
+    { icon: I.book, title: 'Explicar o projeto', sub: 'Estrutura, dependências e como executar',
       prompt: 'Explique este projeto: o que ele faz, como está organizado e como rodar.' },
-    { icon: I.bug, title: 'Encontre bugs', sub: 'Os problemas mais graves, com arquivo e linha',
+    { icon: I.bug, title: 'Procurar bugs', sub: 'Problemas encontrados, com arquivo e linha',
       prompt: 'Procure bugs reais no código deste projeto e me mostre os mais graves, com arquivo e linha. Não edite nada ainda.' },
-    { icon: I.flask, title: 'Escreva testes', sub: 'Para a parte mais importante sem cobertura',
+    { icon: I.flask, title: 'Escrever testes', sub: 'Para o código ainda sem cobertura',
       prompt: 'Escreva testes para a parte mais importante deste projeto que ainda não tem testes, e rode os testes.' },
-    { icon: I.branch, title: 'Mostre o git status', sub: 'E um resumo do que mudou',
+    { icon: I.branch, title: 'Ver alterações', sub: 'git status e resumo das mudanças',
       prompt: 'Mostre o git status e resuma o que mudou.' },
   ];
 
@@ -103,8 +103,8 @@
     const w = el('div', 'welcome');
     w.innerHTML = `
       <img class="logo" src="${LOGO}" alt="">
-      <h1>O que vamos construir?</h1>
-      ${state.hasKey ? '' : `<button class="keycard" id="keyBtn" type="button">${I.key}<span><b>Conecte sua chave da NVIDIA</b><small>É grátis em build.nvidia.com. Leva 1 minuto.</small></span></button>`}
+      <h1>Em que posso ajudar?</h1>
+      ${state.hasKey ? '' : `<button class="keycard" id="keyBtn" type="button">${I.key}<span><b>Configurar a API key da NVIDIA</b><small>Necessária para usar o rfcode. Gere a chave em build.nvidia.com.</small></span></button>`}
       <div class="suggest">${SUGGESTIONS.map((s, i) => `
         <button class="sugg" type="button" data-i="${i}">
           <span class="ic">${s.icon}</span>

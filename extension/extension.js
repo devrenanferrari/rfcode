@@ -78,7 +78,7 @@ class ChatViewProvider {
     while (true) {
       const input = await vscode.window.showInputBox({
         title: 'rfcode: API key da NVIDIA',
-        prompt: 'Crie uma chave grátis em https://build.nvidia.com → "Get API Key"',
+        prompt: 'Gere a chave em https://build.nvidia.com (Get API Key)',
         placeHolder: 'nvapi-...',
         password: true,
         ignoreFocusOut: true,

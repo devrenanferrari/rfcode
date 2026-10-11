@@ -35,7 +35,7 @@ const ask = (q) => new Promise((res) => {
 });
 
 async function askApiKey(cfg) {
-  console.log(c.yellow('\nInforme sua API key da NVIDIA (grátis em https://build.nvidia.com → "Get API Key").'));
+  console.log(c.yellow('\nInforme sua API key da NVIDIA. Para gerar uma, acesse https://build.nvidia.com e clique em "Get API Key".'));
   while (true) {
     const answer = await ask(c.bold('NVIDIA API key (nvapi-...): '));
     if (answer === null) process.exit(1);
@@ -231,8 +231,8 @@ async function handleCommand(state, cfg, line) {
       console.log(`Modelo: ${c.bold(agent.model)}`);
       return;
     case 'models':
-      for (const [m, d] of SUGGESTED_MODELS) console.log(`  ${m === agent.model ? c.green('●') : ' '} ${c.bold(m)} ${c.dim('— ' + d)}`);
-      console.log(c.dim('  Outros: https://build.nvidia.com/models (precisa suportar tool calling)'));
+      for (const [m, d] of SUGGESTED_MODELS) console.log(`  ${m === agent.model ? c.green('●') : ' '} ${c.bold(m)}  ${c.dim(d)}`);
+      console.log(c.dim('  Outros modelos: https://build.nvidia.com/models (é preciso suportar chamadas de ferramenta)'));
       return;
     case 'key':
       agent.apiKey = await askApiKey(cfg);
@@ -300,19 +300,22 @@ async function main() {
   const cfg = loadConfig();
 
   if (argv.includes('--help') || argv.includes('-h')) {
-    console.log(`rfcode — agente de código no terminal com modelos gratuitos da NVIDIA
+    console.log(`rfcode ${VERSION}
+Agente de IA para o terminal, com os modelos de build.nvidia.com.
 
 Uso:
-  rfcode                 abre o modo interativo no diretório atual
-  rfcode "tarefa"        executa uma tarefa e continua no modo interativo
-  rfcode -p "tarefa"     executa uma tarefa e sai (aprovação automática)
-  rfcode --continue      retoma a última conversa desta pasta (atalho: -c)
-  rfcode --key           pede uma nova API key da NVIDIA
-  rfcode --model <nome>  usa outro modelo
-  rfcode --self-improve [--iterations N]  roda o loop de auto-melhoria do SDD
-  rfcode --painel        abre o painel do administrador (acompanhar e dirigir a auto-melhoria)
+  rfcode                   modo interativo na pasta atual
+  rfcode "tarefa"          executa a tarefa e continua no modo interativo
+  rfcode -p "tarefa"       executa a tarefa e sai (aprovação automática)
+  rfcode -c, --continue    retoma a última conversa desta pasta
+  rfcode --key             configura uma nova API key
+  rfcode --model <id>      usa outro modelo
 
-API key: ${CONFIG_FILE} (ou variável de ambiente NVIDIA_API_KEY)`);
+Desenvolvimento:
+  rfcode --self-improve [--iterations N]
+  rfcode --painel
+
+API key: ${CONFIG_FILE} ou variável de ambiente NVIDIA_API_KEY`);
     process.exit(0);
   }
 
@@ -356,7 +359,7 @@ API key: ${CONFIG_FILE} (ou variável de ambiente NVIDIA_API_KEY)`);
 
   process.on('SIGINT', () => {
     if (state.agent.busy) state.agent.abort();
-    else { console.log(`\n  ${T.muted('até mais!')}\n`); process.exit(0); }
+    else { console.log(''); process.exit(0); }
   });
   rl.on('SIGINT', () => process.emit('SIGINT'));
 

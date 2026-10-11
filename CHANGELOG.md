@@ -1,54 +1,69 @@
 # Changelog
 
+## 1.9.1
+
+- Revisão dos textos da extensão, do terminal e da documentação.
+- Comandos agrupados na categoria rfcode da paleta de comandos.
+
 ## 1.9.0
-- Terminal redesenhado: logo em pixel art, cartão com modelo e pasta, spinner com tempo, ações com ícones, diffs coloridos, respostas com markdown formatado e resumo de tokens e tempo.
-- Corrige travamento do banner em pastas com caminho muito longo.
-- Publicado no VS Code Marketplace como renanferrari.rfcode.
+
+- Nova interface no terminal: logo, informações de modelo e pasta, indicador de progresso, formatação de markdown e resumo de uso ao final de cada resposta.
+- Corrigido travamento na exibição de caminhos muito longos.
+- Publisher alterado para `renanferrari`.
 
 ## 1.8.1
-- Prints da extensão no README e na página do Marketplace.
-- Nome de exibição sem marcas de terceiros.
-- Testes automáticos em Windows, Linux e macOS e publicação automática a cada versão (GitHub Actions).
+
+- Capturas de tela no README.
+- Nome de exibição alterado para "rfcode".
+- Testes automatizados em Windows, Linux e macOS e publicação de releases pelo GitHub Actions.
 
 ## 1.8.0
-- **Pesquisa na internet** (`web_search`) sem chave: DuckDuckGo, Bing e Chrome com filtro de relevância; Brave Search API opcional.
-- **Subagentes** (`task`): pesquisas amplas em arquivos, git, documentos e web, sem encher o contexto principal.
-- **Perguntas com botões** (`ask_user`) quando a decisão é do usuário.
-- **Memória** entre conversas (`remember`, `/memory`), guardada em ~/.rfcode/MEMORIA.md.
-- **Regras de permissão** (allow/deny) e botão "Sempre permitir" no cartão de aprovação.
-- **Ver diff** no editor antes de aprovar edições.
-- **Diagnósticos do VS Code** como ferramenta (`get_diagnostics`).
-- **Comandos em segundo plano** (servidores, watch) com `command_output` e `command_stop`.
-- Resumo automático de conversas longas, nova tentativa quando o modelo responde vazio e leitura de páginas longas por partes.
+
+- Pesquisa na web (`web_search`) com DuckDuckGo e Bing, filtro de relevância e suporte opcional à Brave Search API.
+- Subagentes (`task`) para pesquisas em arquivos, git, documentos e web.
+- Perguntas ao usuário com opções (`ask_user`).
+- Memória entre conversas (`remember`, `/memory`) em `~/.rfcode/MEMORIA.md`.
+- Regras de permissão (`allow`/`deny`) e opção Sempre permitir no pedido de aprovação.
+- Visualização do diff no editor antes da aprovação.
+- Diagnósticos do VS Code como ferramenta (`get_diagnostics`).
+- Processos em segundo plano (`command_output`, `command_stop`).
+- Resumo automático de conversas longas, nova tentativa em respostas vazias e leitura paginada de páginas longas.
 
 ## 1.7.1
-- Tela inicial mais limpa: só a logo e o título (sem o subtítulo).
+
+- Tela inicial simplificada.
 
 ## 1.6.2
-- O cartão do QR code some quando o celular conecta (o ícone de celular no topo mostra de novo).
-- Sem permissão para ler o firewall, o rfcode não acusa mais bloqueio falso; mostra só um link de ajuda.
+
+- O cartão do controle remoto é fechado quando o celular se conecta.
+- Removido o aviso de firewall exibido quando não é possível verificar as regras.
 
 ## 1.6.1
-- Controle remoto: o QR code usa o IP da rede de verdade (antes podia pegar o adaptador do VirtualBox).
-- Porta fixa 7433 e botão "Liberar no firewall" quando o Windows bloqueia o celular (regra só para essa porta e só para a rede local).
+
+- Controle remoto: o QR code passa a usar o endereço da rede principal, ignorando adaptadores virtuais.
+- Porta fixa 7433 e opção para liberar a porta no firewall do Windows.
 
 ## 1.6.0
-- Comandos com `/` no painel, com menu de autocompletar: `/help`, `/new`, `/history`, `/model`, `/auto`, `/undo`, `/plan`, `/go`, `/init`, `/review`, `/compact`, `/remote` e `/key`.
-- Comandos personalizados em `.rfcode/commands/<nome>.md` (projeto) e `~/.rfcode/commands/` (usuário).
-- Modo plano: o agente investiga e propõe um plano sem alterar nada; `/go` executa.
-- Controle remoto pelo celular na rede local, com QR code, aprovações sincronizadas e o mesmo painel do VS Code.
-- `/compact` resume a conversa para liberar contexto.
-- Os mesmos comandos novos na CLI.
+
+- Comandos `/` no painel com autocompletar: `/help`, `/new`, `/history`, `/model`, `/auto`, `/undo`, `/plan`, `/go`, `/init`, `/review`, `/compact`, `/remote` e `/key`.
+- Comandos personalizados em `.rfcode/commands/` e `~/.rfcode/commands/`.
+- Modo plano (`/plan`, `/go`).
+- Controle remoto pelo celular na rede local.
+- `/compact` para resumir a conversa.
+- Os mesmos comandos no terminal.
 
 ## 1.5.0
-- Histórico de conversas no painel, com busca e reabertura.
-- Criação de PowerPoint e Word, e leitura de PDF, Word, PowerPoint e Excel.
-- Vídeos narrados com legendas, emoji e imagens.
-- `multi_edit`, conserto automático de JSON quebrado e CSV com acentos corretos no Excel.
+
+- Histórico de conversas no painel, com busca.
+- Geração de PowerPoint e Word; leitura de PDF, Word, PowerPoint e Excel.
+- Geração de vídeos narrados.
+- `multi_edit`, correção de argumentos JSON inválidos e CSV compatível com o Excel.
 
 ## 1.4.0
-- Ferramenta de navegador (Chrome DevTools Protocol), com confirmação obrigatória para enviar, pagar ou excluir.
-- Economia de contexto em tarefas longas.
+
+- Ferramenta de navegador (Chrome DevTools Protocol), com confirmação obrigatória para envios, pagamentos e exclusões.
+- Redução do uso de contexto em tarefas longas.
 
 ## 1.3.0
-- Painel de chat redesenhado: tela inicial com sugestões, cartões de ação, diffs, plano fixo e botão de copiar código.
+
+- Novo painel de chat: tela inicial com sugestões, cartões de ação, diffs, plano fixo e botão de copiar código.

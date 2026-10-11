@@ -1,8 +1,8 @@
 {
   "name": "rfcode",
-  "displayName": "rfcode — agente de IA gratuito",
-  "description": "Agente de IA gratuito para VS Code: edita código, roda testes, pesquisa na web, cria PowerPoint, Word e vídeos narrados, controla o PC e funciona pelo celular. Usa os modelos gratuitos de build.nvidia.com.",
-  "version": "1.9.0",
+  "displayName": "rfcode",
+  "description": "Agente de IA para VS Code com os modelos gratuitos de build.nvidia.com. Edita código, executa testes, pesquisa na web, gera documentos e vídeos e automatiza tarefas no Windows.",
+  "version": "1.9.1",
   "publisher": "renanferrari",
   "license": "MIT",
   "repository": {
@@ -68,46 +68,56 @@
     "commands": [
       {
         "command": "rfcode.open",
-        "title": "rfcode: Abrir chat"
+        "title": "Abrir chat",
+        "category": "rfcode"
       },
       {
         "command": "rfcode.newChat",
-        "title": "rfcode: Nova conversa",
-        "icon": "$(add)"
+        "title": "Nova conversa",
+        "icon": "$(add)",
+        "category": "rfcode"
       },
       {
         "command": "rfcode.setApiKey",
-        "title": "rfcode: Configurar API key da NVIDIA"
+        "title": "Configurar API key da NVIDIA",
+        "category": "rfcode"
       },
       {
         "command": "rfcode.openTerminal",
-        "title": "rfcode: Abrir no terminal"
+        "title": "Abrir no terminal",
+        "category": "rfcode"
       },
       {
         "command": "rfcode.askSelection",
-        "title": "rfcode: Perguntar sobre a seleção"
+        "title": "Perguntar sobre a seleção",
+        "category": "rfcode"
       },
       {
         "command": "rfcode.selfImprove",
-        "title": "rfcode (dev): Auto-melhoria (loop do SDD)"
+        "title": "Auto-melhoria (SDD)",
+        "category": "rfcode (desenvolvimento)"
       },
       {
         "command": "rfcode.dashboard",
-        "title": "rfcode (dev): Painel de auto-melhoria"
+        "title": "Painel de auto-melhoria",
+        "category": "rfcode (desenvolvimento)"
       },
       {
         "command": "rfcode.history",
-        "title": "rfcode: Histórico de conversas",
-        "icon": "$(history)"
+        "title": "Histórico de conversas",
+        "icon": "$(history)",
+        "category": "rfcode"
       },
       {
         "command": "rfcode.remote",
-        "title": "rfcode: Controle remoto pelo celular",
-        "icon": "$(device-mobile)"
+        "title": "Controle remoto",
+        "icon": "$(device-mobile)",
+        "category": "rfcode"
       },
       {
         "command": "rfcode.remoteStop",
-        "title": "rfcode: Desligar controle remoto"
+        "title": "Desligar controle remoto",
+        "category": "rfcode"
       }
     ],
     "menus": {
@@ -152,29 +162,29 @@
         "rfcode.model": {
           "type": "string",
           "default": "nvidia/nemotron-3-super-120b-a12b",
-          "description": "Modelo da NVIDIA (build.nvidia.com) usado pelo agente. Precisa suportar tool calling."
+          "description": "Modelo de build.nvidia.com usado pelo agente. O modelo precisa suportar chamadas de ferramenta."
         },
         "rfcode.autoApprove": {
           "type": "boolean",
           "default": false,
-          "description": "Executar edições, comandos e controle do PC sem pedir confirmação."
+          "description": "Executa edições, comandos e ações no sistema sem pedir aprovação."
         },
         "rfcode.repoPath": {
           "type": "string",
           "default": "",
-          "description": "(Desenvolvimento) Clone do repositório do rfcode usado pela auto-melhoria. Só vale com rfcode.developerMode ligado."
+          "description": "Repositório do rfcode usado pela auto-melhoria. Válido apenas com rfcode.developerMode ativado."
         },
         "rfcode.remotePort": {
           "type": "number",
           "default": 7433,
           "minimum": 1,
           "maximum": 65535,
-          "description": "Porta do controle remoto pelo celular. Se estiver ocupada, o rfcode usa outra livre."
+          "description": "Porta do controle remoto. Se estiver em uso, outra porta livre é escolhida."
         },
         "rfcode.developerMode": {
           "type": "boolean",
           "default": false,
-          "description": "Mostra os comandos de desenvolvimento do próprio rfcode (auto-melhoria e painel do SDD)."
+          "description": "Exibe os comandos de desenvolvimento do rfcode."
         }
       }
     }
