@@ -2,9 +2,9 @@
 
 [![Testes](https://github.com/devrenanferrari/rfcode/actions/workflows/ci.yml/badge.svg)](https://github.com/devrenanferrari/rfcode/actions/workflows/ci.yml)
 
-Agente de IA para VS Code e terminal que usa os modelos gratuitos de [build.nvidia.com](https://build.nvidia.com). Lê e edita projetos, executa comandos e testes, usa git, pesquisa na web, gera documentos e vídeos e automatiza tarefas no Windows. Toda ação que altera arquivos ou o sistema passa por aprovação.
+Agente de IA para VS Code e terminal. Funciona com os modelos gratuitos de [build.nvidia.com](https://build.nvidia.com) e com outros provedores (OpenRouter, Groq, OpenAI, Anthropic, Gemini, DeepSeek, Mistral) ou modelos locais (Ollama, LM Studio). Lê e edita projetos, executa comandos e testes, usa git, pesquisa na web, gera documentos e vídeos e automatiza tarefas no Windows. Toda ação que altera arquivos ou o sistema passa por aprovação.
 
-AI agent for VS Code and the terminal, powered by the free models on build.nvidia.com. The interface is in Brazilian Portuguese.
+AI agent for VS Code and the terminal. Works with NVIDIA's free models, other OpenAI-compatible providers and local models. The interface is in Brazilian Portuguese.
 
 | Conversa | Comandos | Aprovação |
 |---|---|---|
@@ -16,7 +16,7 @@ Pelo VS Code: procure por rfcode na aba de extensões (`Ctrl+Shift+X`).
 
 Pelo arquivo: baixe o `.vsix` em [Releases](https://github.com/devrenanferrari/rfcode/releases) e instale com `code --install-extension rfcode.vsix`.
 
-Na primeira execução, o rfcode pede uma API key da NVIDIA. Gere a sua em [build.nvidia.com](https://build.nvidia.com) (Get API Key). A chave fica no armazenamento seguro do VS Code.
+Na primeira execução, o rfcode pede uma API key da NVIDIA. Gere a sua em [build.nvidia.com](https://build.nvidia.com) (Get API Key). A chave fica no armazenamento seguro do VS Code. Para usar outro provedor, veja [Provedores](#provedores).
 
 ## Recursos
 
@@ -40,6 +40,9 @@ Digite `/` no campo de mensagem para abrir a lista.
 | `/new` | Inicia uma conversa (alias: `/clear`) |
 | `/history` | Abre o histórico (alias: `/resume`) |
 | `/model [id]` | Mostra ou troca o modelo |
+| `/models [provedor]` | Lista os modelos disponíveis |
+| `/provider [provedor]` | Configura um provedor de modelos |
+| `/doctor` | Verifica o ambiente, as chaves e as ferramentas |
 | `/auto` | Liga ou desliga a aprovação automática |
 | `/undo` | Desfaz a última alteração de arquivo |
 | `/plan <pedido>` | Investiga e propõe um plano sem alterar nada |
@@ -91,13 +94,39 @@ A pesquisa usa DuckDuckGo e Bing, sem necessidade de chave. Esses serviços pode
 
 O arquivo `~/.rfcode/perfil.md` pode conter os dados que o agente usa ao preencher formulários (contato, formação, experiência, preferências). Dados ausentes são solicitados ao usuário, nunca inventados.
 
-## Modelos
+## Provedores
 
-O modelo é escolhido no seletor do painel ou com `/model`. Modelos testados com chamadas de ferramenta:
+O modelo é escolhido no seletor do painel, que agrupa os modelos por provedor, ou com `/model`. Para adicionar um provedor, use `/provider` (ou a opção Configurar outro provedor no seletor): o rfcode pede a chave, valida e lista os modelos disponíveis.
 
-- `nvidia/nemotron-3-super-120b-a12b`: padrão, rápido.
-- `z-ai/glm-5.3`: melhor em tarefas longas, mais lento.
-- `openai/gpt-oss-20b`: muito rápido, para tarefas simples.
+| Provedor | Prefixo do modelo | Observação |
+|---|---|---|
+| NVIDIA | sem prefixo | Padrão, gratuito |
+| OpenRouter | `openrouter:` | Acesso a vários modelos com uma chave |
+| Groq | `groq:` | Camada gratuita, muito rápido |
+| OpenAI | `openai:` | |
+| Anthropic | `anthropic:` | |
+| Google Gemini | `gemini:` | Camada gratuita |
+| DeepSeek | `deepseek:` | |
+| Mistral | `mistral:` | |
+| Ollama | `ollama:` | Local, detectado automaticamente |
+| LM Studio | `lmstudio:` | Local, detectado automaticamente |
+| Personalizado | `custom:` | Qualquer servidor compatível com a API da OpenAI |
+
+Exemplos: `groq:llama-3.3-70b-versatile`, `ollama:qwen3:8b`, `openrouter:openrouter/auto`. O modelo precisa suportar chamadas de ferramenta.
+
+As chaves também podem vir de variáveis de ambiente (`OPENROUTER_API_KEY`, `GROQ_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `MISTRAL_API_KEY`).
+
+Modelos da NVIDIA testados: `nvidia/nemotron-3-super-120b-a12b` (padrão, rápido), `z-ai/glm-5.3` (melhor em tarefas longas) e `openai/gpt-oss-20b` (tarefas simples).
+
+## Conversas e continuidade
+
+- Toda conversa é salva a cada passo. Ao abrir o VS Code, o painel volta para a última conversa da pasta. Se uma tarefa foi interrompida (janela recarregada, processo encerrado), o painel oferece continuar de onde parou.
+- Mensagens enviadas enquanto o agente trabalha entram em fila e são consideradas no passo seguinte, sem interromper a tarefa. Se a resposta for interrompida, as mensagens da fila viram o próximo pedido.
+- O histórico (ícone de relógio ou `/history`) permite reabrir qualquer conversa.
+
+## Diagnóstico
+
+`/doctor` (ou `rfcode --doctor`) verifica a versão do Node.js, as chaves de cada provedor, os modelos locais, git, Chrome, ffmpeg e a voz de narração. Erros ficam registrados em `~/.rfcode/logs/rfcode.log` (comando rfcode: Abrir log de erros), sem as chaves de API.
 
 ## Terminal
 

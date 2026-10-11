@@ -17,7 +17,11 @@ Depois de instalar um `.vsix` novo, recarregue o VS Code (`Ctrl+Shift+P` → "Re
 bin/rfcode.js        CLI
 extension/           extensão do VS Code (painel, comandos, controle remoto)
 media/               interface do painel (chat.js, chat.css, markdown.js) e ícones
-lib/agent.js         núcleo: ferramentas, streaming da API e loop do agente
+lib/agent.js         núcleo: ferramentas, loop do agente, fila de mensagens e retomada
+lib/providers.js     provedores de modelo (NVIDIA, OpenRouter, Groq, OpenAI, Anthropic, Gemini, locais...)
+lib/doctor.js        diagnóstico do ambiente (/doctor)
+lib/log.js           log de erros em ~/.rfcode/logs (sem chaves)
+lib/tui.js           visual do terminal
 lib/commands.js      comandos "/" (embutidos e personalizados)
 lib/browser.js       navegador via Chrome DevTools Protocol
 lib/office.js        PowerPoint, Word e leitura de documentos (lib/zip.js por baixo)

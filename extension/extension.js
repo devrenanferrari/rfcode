@@ -3,6 +3,7 @@
 
 const vscode = require('vscode');
 const path = require('path');
+const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
 const { Agent, DEFAULT_MODEL, SUGGESTED_MODELS, loadConfig, saveConfig, validateKey, describeCall, previewCall } = require('../lib/agent');
@@ -12,6 +13,10 @@ const { panelBody } = require('../lib/panel');
 const { RemoteServer, firewallStatus, allowFirewall, DEFAULT_PORT } = require('../lib/remote');
 const { qrSvg } = require('../lib/qr');
 const { addAllow, suggestRule } = require('../lib/permissions');
+const providers = require('../lib/providers');
+const { runDoctor, formatDoctor } = require('../lib/doctor');
+const log = require('../lib/log');
+const VERSION = require('../package.json').version;
 const { remember, readUserMemory, userFile: memoryFile } = require('../lib/memory');
 
 // Diagnósticos do VS Code (erros e avisos do editor) como ferramenta do agente.
@@ -146,13 +151,28 @@ class ChatViewProvider {
   }
   postLocal(msg) { this.view?.webview.postMessage(msg); }
 
+  // Modelos dos provedores configurados (e dos servidores locais detectados), agrupados por provedor.
+  async modelList(model, local = this.localModels || []) {
+    const cfg = loadConfig();
+    const nv = (await this.context.secrets.get(SECRET_KEY)) || cfg.apiKey || '';
+    const groups = providers.configuredProviders({ ...cfg, keys: { ...(cfg.keys || {}), nvidia: nv } })
+      .filter((g) => !providers.PROVIDERS[g.id].local);
+    const list = groups.flatMap((g) => g.models.map((m) => ({ ...m, group: g.name })));
+    for (const l of local) {
+      for (const m of l.models.slice(0, 30)) list.push({ id: providers.formatModel(l.provider, m), desc: 'local', group: providers.PROVIDERS[l.provider].name });
+    }
+    if (!list.some((m) => m.id === model)) list.unshift({ id: model, desc: 'atual', group: 'Atual' });
+    return list;
+  }
+
   async initMessage() {
-    const key = (await this.context.secrets.get(SECRET_KEY)) || loadConfig().apiKey;
+    const cfg = loadConfig();
     const model = this.agent?.model || settings().get('model') || DEFAULT_MODEL;
-    const models = SUGGESTED_MODELS.map(([id, desc]) => ({ id, desc }));
-    if (!models.some((m) => m.id === model)) models.unshift({ id: model, desc: 'personalizado' });
+    const { provider } = providers.parseModel(model);
+    const nv = (await this.context.secrets.get(SECRET_KEY)) || cfg.apiKey;
+    const hasKey = provider === 'nvidia' ? !!nv : providers.PROVIDERS[provider].needsKey === false || !!providers.keyFor(provider, cfg);
     return {
-      type: 'init', model, models, cwd: workspaceCwd(), hasKey: !!key,
+      type: 'init', model, models: await this.modelList(model), cwd: workspaceCwd(), hasKey,
       autoApprove: this.agent ? this.agent.autoApprove : settings().get('autoApprove') || false,
       commands: listCommands(workspaceCwd(), 'ui'),
       mode: this.agent?.planOnly ? 'plan' : '',
@@ -162,6 +182,23 @@ class ChatViewProvider {
 
   async init() {
     this.postLocal(await this.initMessage());
+    // Ollama / LM Studio ligados: entram no seletor (sem travar a abertura do painel)
+    providers.detectLocal().then(async (local) => {
+      this.localModels = local;
+      if (local.length) {
+        const model = this.agent?.model || settings().get('model') || DEFAULT_MODEL;
+        this.post({ type: 'models', model, models: await this.modelList(model, local) });
+      }
+    }).catch(() => {});
+    // Ao abrir o VS Code: volta para a última conversa desta pasta; se ela parou no meio, oferece continuar.
+    if (!this.agent && !this.checkedResume) {
+      this.checkedResume = true;
+      const last = new SessionManager().list().find((x) => x.cwd === workspaceCwd());
+      if (last && Date.now() - Date.parse(last.updated) < 12 * 3600 * 1000) {
+        await this.openSession(last.id);
+        if (last.status === 'running' && this.agent?.interrupted) this.postLocal({ type: 'resumable', title: last.title });
+      }
+    }
   }
 
   // Celular novo: manda o estado atual e a conversa em andamento só para ele.
@@ -177,6 +214,10 @@ class ChatViewProvider {
   async onMessage(m, from = 'local') {
     switch (m.type) {
       case 'ready': return this.init();
+      case 'resume': return this.resume();
+      case 'discardResume':
+        if (this.agent && !this.agent.busy) { this.agent.repairHistory(); this.agent.sessionManager.save(this.agent.messages, 'done'); }
+        return undefined;
       case 'send': return this.send(m.text);
       case 'command': return this.runCommand(m.name, m.args || '');
       case 'stop': return this.stop();
@@ -295,6 +336,24 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
       }
       case 'remote': return this.remote?.running ? this.showRemote() : this.startRemote();
       case 'key': return this.setApiKey();
+      case 'provider': return this.setupProvider(args || undefined);
+      case 'models': {
+        if (args) {
+          const id = args.trim().toLowerCase();
+          if (!providers.PROVIDERS[id]) return info(`Provedor desconhecido: ${id}. Disponíveis: ${Object.keys(providers.PROVIDERS).join(', ')}.`);
+          const list = await providers.listModels(id, loadConfig());
+          return info(list.length ? `Modelos em ${providers.PROVIDERS[id].name} (${list.length}):\n${list.slice(0, 60).map((m) => '  ' + providers.formatModel(id, m)).join('\n')}${list.length > 60 ? '\n  ...' : ''}\nUse /model <id> para escolher.`
+            : `Não consegui listar os modelos de ${providers.PROVIDERS[id].name}. Configure com /provider ${id}.`);
+        }
+        const model = agent?.model || settings().get('model') || DEFAULT_MODEL;
+        const list = await this.modelList(model);
+        return info(`Modelos disponíveis:\n${list.map((m) => `  ${m.id}${m.desc ? '  (' + m.desc + ')' : ''}`).join('\n')}\nOutros provedores: /provider. Lista completa de um provedor: /models <provedor>.`);
+      }
+      case 'doctor': {
+        info('Verificando o ambiente...');
+        const items = await runDoctor({ cfg: loadConfig(), model: agent?.model || settings().get('model'), version: VERSION });
+        return info(formatDoctor(items));
+      }
       default: {
         const text = expandCustom(name, args, workspaceCwd());
         if (text) return this.send(text, `/${name}${args ? ' ' + args : ''}`);
@@ -408,17 +467,139 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
   // display: o que aparece como mensagem do usuário (ex.: "/review" em vez do prompt inteiro com o diff)
   async send(text, display) {
     if (!text || !text.trim()) return;
-    const apiKey = await this.getApiKey();
-    if (!apiKey) { this.post({ type: 'error', text: 'Configure a API key da NVIDIA para usar o rfcode.' }); this.post({ type: 'done' }); return; }
-    const agent = this.ensureAgent(apiKey);
-    if (agent.busy) { this.post({ type: 'info', text: 'O rfcode ainda está respondendo. Espere ou clique em parar.' }); return; }
-    agent.apiKey = apiKey;
+    const nvKey = (await this.context.secrets.get(SECRET_KEY)) || loadConfig().apiKey || '';
+    const agent = this.ensureAgent(nvKey);
+    // durante o trabalho: a mensagem entra na fila e o agente a considera no próximo passo
+    if (agent.busy) {
+      agent.queue(text);
+      this.post({ type: 'user', text: display || text, queued: true });
+      return;
+    }
+    const model = settings().get('model') || DEFAULT_MODEL;
+    if (!(await this.ensureProvider(model))) {
+      this.post({ type: 'error', text: 'Configure o provedor do modelo para usar o rfcode (/provider).' });
+      this.post({ type: 'done' });
+      return;
+    }
+    agent.apiKey = (await this.context.secrets.get(SECRET_KEY)) || loadConfig().apiKey || '';
     agent.cwd = workspaceCwd();
-    agent.model = settings().get('model') || DEFAULT_MODEL;
+    agent.model = model;
     agent.autoApprove = settings().get('autoApprove') || agent.autoApprove;
 
     this.post({ type: 'user', text: display || text });
-    await agent.send(text, {
+    await agent.send(text, this.agentHooks());
+    await this.drainQueue();
+  }
+
+  // Mensagens que ficaram na fila quando a resposta parou (ex.: o usuário clicou em Parar): viram o próximo pedido.
+  async drainQueue() {
+    const agent = this.agent;
+    const left = agent && agent.pendingUser ? agent.pendingUser.splice(0) : [];
+    if (!left.length || agent.busy) return;
+    this.post({ type: 'queued', count: left.length });
+    this.post({ type: 'thinking' });
+    await agent.send(left.join('\n\n'), this.agentHooks());
+    await this.drainQueue();
+  }
+
+  // Continua a tarefa que parou no meio (VS Code recarregado, processo encerrado).
+  async resume() {
+    const agent = this.agent;
+    if (!agent || agent.busy || !agent.interrupted) return;
+    if (!(await this.ensureProvider(agent.model))) return;
+    agent.apiKey = (await this.context.secrets.get(SECRET_KEY)) || loadConfig().apiKey || '';
+    this.post({ type: 'resuming' });
+    await agent.resume(this.agentHooks());
+    await this.drainQueue();
+  }
+
+  // O provedor do modelo está pronto? Se faltar a chave, pede (sem trocar o modelo escolhido).
+  async ensureProvider(model) {
+    const { provider } = providers.parseModel(model);
+    if (provider === 'nvidia') return !!(await this.getApiKey());
+    const p = providers.PROVIDERS[provider];
+    const cfg = loadConfig();
+    if (provider === 'custom' && !providers.baseUrlFor('custom', cfg)) return !!(await this.setupProvider('custom', { keepModel: true }));
+    if (p.needsKey === false || providers.keyFor(provider, cfg)) return true;
+    return !!(await this.setupProvider(provider, { keepModel: true }));
+  }
+
+  // Escolhe e configura um provedor: chave (validada), endereço (personalizado) e modelo.
+  async setupProvider(id, { keepModel = false } = {}) {
+    const cfg = loadConfig();
+    if (!id) {
+      const nv = (await this.context.secrets.get(SECRET_KEY)) || cfg.apiKey;
+      const items = Object.entries(providers.PROVIDERS).map(([pid, p]) => {
+        const ready = pid === 'nvidia' ? !!nv : p.needsKey === false ? (pid === 'custom' ? !!providers.baseUrlFor('custom', cfg) : null) : !!providers.keyFor(pid, cfg);
+        return { label: p.name, description: ready === true ? 'configurado' : p.local ? 'roda no seu computador' : p.free ? 'tem camada gratuita' : '', pid };
+      });
+      const pick = await vscode.window.showQuickPick(items, { title: 'rfcode: provedor de modelos', placeHolder: 'Escolha o provedor' });
+      if (!pick) return null;
+      id = pick.pid;
+    }
+    id = String(id).toLowerCase();
+    const p = providers.PROVIDERS[id];
+    if (!p) { this.post({ type: 'error', text: `Provedor desconhecido: ${id}. Disponíveis: ${Object.keys(providers.PROVIDERS).join(', ')}.` }); return null; }
+    if (id === 'custom') {
+      const url = await vscode.window.showInputBox({
+        title: 'rfcode: provedor personalizado', prompt: 'Endereço base compatível com a API da OpenAI (ex.: https://meu-servidor/v1)',
+        value: (cfg.baseUrls || {}).custom || '', ignoreFocusOut: true,
+      });
+      if (!url) return null;
+      const c = loadConfig();
+      c.baseUrls = { ...(c.baseUrls || {}), custom: url.trim() };
+      saveConfig(c);
+    }
+    if (id === 'nvidia') {
+      if (!(await this.getApiKey(true))) return null;
+    } else if (p.needsKey !== false || id === 'custom') {
+      const input = await vscode.window.showInputBox({
+        title: `rfcode: API key de ${p.name}`, password: true, ignoreFocusOut: true,
+        prompt: p.keyUrl ? `Gere a chave em ${p.keyUrl}` : 'API key (deixe vazio se o servidor não exigir)',
+      });
+      if (input === undefined) return null;
+      const key = input.trim();
+      if (!key && p.needsKey !== false) return null;
+      if (key) {
+        const r = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'rfcode: validando a chave...' },
+          () => providers.validateKey(id, key, loadConfig()));
+        if (r === 'invalid') { vscode.window.showErrorMessage(`rfcode: a chave foi recusada por ${p.name}.`); return null; }
+        const c = loadConfig();
+        c.keys = { ...(c.keys || {}), [id]: key };
+        saveConfig(c);
+      }
+    } else if (p.local) {
+      const models = await providers.listModels(id, loadConfig(), { timeout: 1500 });
+      if (!models.length) {
+        vscode.window.showWarningMessage(`rfcode: ${p.name} não está respondendo em ${p.baseUrl}. Abra o programa e baixe um modelo antes.`);
+        return null;
+      }
+    }
+    if (keepModel) return true;
+    const live = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'rfcode: buscando os modelos...' },
+      () => providers.listModels(id, loadConfig()));
+    const items = p.models.map(([m, d]) => ({ label: m, description: d }));
+    const rest = live.filter((m) => !p.models.some(([x]) => x === m));
+    if (rest.length) items.push({ label: 'Disponíveis no provedor', kind: vscode.QuickPickItemKind.Separator }, ...rest.map((m) => ({ label: m })));
+    let modelId;
+    if (items.length) {
+      const pick = await vscode.window.showQuickPick(items, { title: `rfcode: modelo de ${p.name}`, placeHolder: 'Escolha o modelo (precisa suportar chamadas de ferramenta)' });
+      modelId = pick && pick.label;
+    } else {
+      modelId = await vscode.window.showInputBox({ title: 'rfcode: modelo', prompt: 'Nome do modelo', ignoreFocusOut: true });
+    }
+    if (!modelId) return true;
+    const full = providers.formatModel(id, modelId.trim());
+    await this.setModel(full);
+    this.post({ type: 'models', model: full, models: await this.modelList(full) });
+    this.post({ type: 'info', text: `Modelo: ${full} (${p.name})` });
+    return true;
+  }
+
+  // Ganchos do agente para o painel (usados por send e resume).
+  agentHooks() {
+    return {
+      onQueued: (texts) => this.post({ type: 'queued', count: texts.length }),
       onThinking: () => this.post({ type: 'thinking' }),
       onResponseStart: () => this.post({ type: 'responseStart' }),
       onReasoning: (t) => this.post({ type: 'reasoning', text: t }),
@@ -443,7 +624,7 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
       onError: (t) => this.post({ type: 'error', text: t }),
       onAborted: () => this.post({ type: 'info', text: 'Interrompido.' }),
       onDone: () => this.post({ type: 'done' }),
-    });
+    };
   }
 }
 
@@ -463,6 +644,16 @@ function activate(context) {
     vscode.commands.registerCommand('rfcode.newChat', () => provider.newChat()),
     vscode.commands.registerCommand('rfcode.history', async () => { await vscode.commands.executeCommand('rfcode.chat.focus'); provider.postLocal({ type: 'openHistory' }); }),
     vscode.commands.registerCommand('rfcode.setApiKey', () => provider.setApiKey()),
+    vscode.commands.registerCommand('rfcode.setProvider', () => provider.setupProvider()),
+    vscode.commands.registerCommand('rfcode.doctor', async () => {
+      await vscode.commands.executeCommand('rfcode.chat.focus');
+      return provider.runCommand('doctor', '');
+    }),
+    vscode.commands.registerCommand('rfcode.openLog', async () => {
+      if (!fs.existsSync(log.file())) { vscode.window.showInformationMessage('rfcode: nenhum erro registrado ainda.'); return; }
+      const doc = await vscode.workspace.openTextDocument(log.file());
+      await vscode.window.showTextDocument(doc, { preview: true });
+    }),
     vscode.commands.registerCommand('rfcode.remote', async () => {
       await vscode.commands.executeCommand('rfcode.chat.focus');
       return provider.remote?.running ? provider.showRemote() : provider.startRemote();

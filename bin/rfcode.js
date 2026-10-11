@@ -14,6 +14,8 @@ const {
 } = require('../lib/commands');
 
 const { c: T, banner, MarkdownStream, Spinner, toolLine, prompt } = require('../lib/tui');
+const providers = require('../lib/providers');
+const { runDoctor, formatDoctor } = require('../lib/doctor');
 const VERSION = require('../package.json').version;
 
 // ---------- cores (paleta da marca, ver lib/tui.js) ----------
@@ -25,7 +27,19 @@ const rl = readline.createInterface({ input: process.stdin, output: process.stdo
 let closed = false;
 const lineQueue = [];
 const waiters = [];
-rl.on('line', (l) => { const w = waiters.shift(); if (w) w(l); else lineQueue.push(l); });
+// agente atual (para receber mensagens digitadas enquanto ele trabalha)
+let liveAgent = null;
+rl.on('line', (l) => {
+  const w = waiters.shift();
+  if (w) { w(l); return; }
+  // digitou durante uma resposta: vai para a fila e o agente considera no próximo passo
+  if (liveAgent && liveAgent.busy && l.trim() && !l.trim().startsWith('/')) {
+    const n = liveAgent.queue(l);
+    out(`\r\x1b[2K  ${T.lime('↳')} ${T.muted(`na fila (${n}): o rfcode vai considerar no próximo passo`)}\n`);
+    return;
+  }
+  lineQueue.push(l);
+});
 rl.on('close', () => { closed = true; while (waiters.length) waiters.shift()(null); });
 const ask = (q) => new Promise((res) => {
   if (process.stdin.isTTY && !closed) { rl.setPrompt(q); rl.prompt(true); } else out(q);
@@ -50,6 +64,61 @@ async function askApiKey(cfg) {
     console.log(c.dim(`Salva em ${CONFIG_FILE}`));
     return key;
   }
+}
+
+// ---------- provedores ----------
+// /provider [id]: escolhe o provedor, pede e valida a chave (ou o endereço) e escolhe o modelo.
+async function setupProvider(id, state, cfg) {
+  const ids = Object.keys(providers.PROVIDERS);
+  if (!id) {
+    console.log(`\n  ${T.bold('Provedores')}`);
+    const fresh = loadConfig();
+    ids.forEach((pid, i) => {
+      const p = providers.PROVIDERS[pid];
+      const ready = pid === 'nvidia' ? !!(state.agent.apiKey || fresh.apiKey) : p.needsKey === false ? null : !!providers.keyFor(pid, fresh);
+      const tag = ready === true ? T.green('configurado') : p.local ? T.muted('local') : p.free ? T.muted('camada gratuita') : '';
+      console.log(`    ${T.lime(String(i + 1).padStart(2))} ${p.name} ${tag}`);
+    });
+    const a = ((await ask(`  número ou nome ${prompt()}`)) || '').trim().toLowerCase();
+    id = /^\d+$/.test(a) ? ids[+a - 1] : a;
+  }
+  const p = providers.PROVIDERS[id];
+  if (!p) { console.log(c.red(`  Provedor desconhecido. Disponíveis: ${ids.join(', ')}`)); return; }
+  if (id === 'nvidia') { state.agent.apiKey = await askApiKey(cfg); }
+  else {
+    if (id === 'custom') {
+      const url = ((await ask(`  endereço base compatível com a API da OpenAI (ex.: https://servidor/v1) ${prompt()}`)) || '').trim();
+      if (!url) return;
+      const c2 = loadConfig(); c2.baseUrls = { ...(c2.baseUrls || {}), custom: url }; saveConfig(c2);
+    }
+    if (p.needsKey !== false || id === 'custom') {
+      if (p.keyUrl) console.log(c.dim(`  Gere a chave em ${p.keyUrl}`));
+      const key = ((await ask(`  API key de ${p.name}${p.needsKey === false ? ' (vazio se não exigir)' : ''} ${prompt()}`)) || '').trim();
+      if (!key && p.needsKey !== false) return;
+      if (key) {
+        out(c.dim('  validando... '));
+        const r = await providers.validateKey(id, key, loadConfig());
+        if (r === 'invalid') { console.log(c.red('recusada.')); return; }
+        console.log(r === 'ok' ? c.green('ok') : c.yellow('sem conexão; salvando assim mesmo'));
+        const c2 = loadConfig(); c2.keys = { ...(c2.keys || {}), [id]: key }; saveConfig(c2);
+      }
+    }
+  }
+  out(c.dim('  buscando modelos...\n'));
+  const live = await providers.listModels(id, loadConfig());
+  const options = [...p.models.map(([m, d]) => ({ m, d })), ...live.filter((m) => !p.models.some(([x]) => x === m)).slice(0, 25).map((m) => ({ m, d: '' }))];
+  if (!options.length) {
+    console.log(c.yellow(`  Nenhum modelo encontrado. ${p.local ? 'Abra o programa e baixe um modelo antes.' : 'Escolha depois com /model ' + id + ':<modelo>.'}`));
+    return;
+  }
+  options.forEach((o, i) => console.log(`    ${T.lime(String(i + 1).padStart(2))} ${o.m} ${c.dim(o.d)}`));
+  const a = ((await ask(`  modelo (número ou nome) ${prompt()}`)) || '').trim();
+  const chosen = /^\d+$/.test(a) ? (options[+a - 1] || {}).m : a;
+  if (!chosen) return;
+  const full = providers.formatModel(id, chosen);
+  state.agent.model = full;
+  const c3 = loadConfig(); c3.model = full; saveConfig(c3);
+  console.log(`  ${T.green('✓')} modelo ${T.bold(full)}`);
 }
 
 // ---------- ligação do agente com o terminal ----------
@@ -154,6 +223,7 @@ function cliHooks(state) {
       spin.start('executando');
     },
     onUsage(u) { state.usage = u; },
+    onQueued(texts) { spin.stop(); console.log(`  ${T.lime('↳')} ${T.muted(`${texts.length > 1 ? texts.length + ' mensagens recebidas' : 'mensagem recebida'}; ajustando o trabalho`)}`); spin.start('pensando'); },
     onDone() {
       spin.stop();
       endText();
@@ -230,10 +300,39 @@ async function handleCommand(state, cfg, line) {
       if (arg) { agent.model = arg; cfg.model = arg; saveConfig(cfg); }
       console.log(`Modelo: ${c.bold(agent.model)}`);
       return;
-    case 'models':
-      for (const [m, d] of SUGGESTED_MODELS) console.log(`  ${m === agent.model ? c.green('●') : ' '} ${c.bold(m)}  ${c.dim(d)}`);
-      console.log(c.dim('  Outros modelos: https://build.nvidia.com/models (é preciso suportar chamadas de ferramenta)'));
-      return;
+    case 'models': {
+      if (arg) {
+        const id = arg.toLowerCase();
+        if (!providers.PROVIDERS[id]) { console.log(c.red(`Provedor desconhecido: ${id}. Disponíveis: ${Object.keys(providers.PROVIDERS).join(', ')}`)); return null; }
+        out(c.dim(`  buscando modelos de ${providers.PROVIDERS[id].name}...\n`));
+        const list = await providers.listModels(id, loadConfig());
+        if (!list.length) { console.log(c.yellow(`  não consegui listar. Configure com /provider ${id}`)); return null; }
+        for (const m of list.slice(0, 80)) console.log(`  ${c.bold(providers.formatModel(id, m))}`);
+        if (list.length > 80) console.log(c.dim(`  ... e mais ${list.length - 80}`));
+        console.log(c.dim('  Escolha com /model <id>.'));
+        return null;
+      }
+      const cfgNow = loadConfig();
+      const groups = providers.configuredProviders({ ...cfgNow, keys: { ...(cfgNow.keys || {}), nvidia: agent.apiKey || cfgNow.apiKey } });
+      for (const l of await providers.detectLocal()) {
+        groups.push({ name: providers.PROVIDERS[l.provider].name, models: l.models.slice(0, 20).map((m) => ({ id: providers.formatModel(l.provider, m), desc: 'local' })) });
+      }
+      for (const g of groups) {
+        console.log(`\n  ${T.bold(g.name)}`);
+        for (const m of g.models) console.log(`    ${m.id === agent.model ? c.green('●') : ' '} ${c.bold(m.id)}  ${c.dim(m.desc)}`);
+      }
+      console.log(c.dim('\n  Outros provedores: /provider. Lista completa: /models <provedor>.'));
+      return null;
+    }
+    case 'provider':
+      await setupProvider(arg, state, cfg);
+      return null;
+    case 'doctor': {
+      out(c.dim('  verificando...\n'));
+      const items = await runDoctor({ cfg: loadConfig(), model: agent.model, version: VERSION });
+      console.log(formatDoctor(items, { color: { ok: T.green, warn: T.amber, fail: T.red } }).replace(/^/gm, '  '));
+      return null;
+    }
     case 'key':
       agent.apiKey = await askApiKey(cfg);
       return;
@@ -308,8 +407,12 @@ Uso:
   rfcode "tarefa"          executa a tarefa e continua no modo interativo
   rfcode -p "tarefa"       executa a tarefa e sai (aprovação automática)
   rfcode -c, --continue    retoma a última conversa desta pasta
-  rfcode --key             configura uma nova API key
-  rfcode --model <id>      usa outro modelo
+  rfcode --key             configura uma nova API key da NVIDIA
+  rfcode --model <id>      usa outro modelo (ex.: groq:llama-3.3-70b-versatile, ollama:qwen3:8b)
+  rfcode --doctor          verifica o ambiente, as chaves e as ferramentas
+
+Provedores: NVIDIA (padrão), OpenRouter, Groq, OpenAI, Anthropic, Gemini, DeepSeek, Mistral,
+Ollama e LM Studio (locais) e qualquer servidor compatível com a API da OpenAI. Use /provider.
 
 Desenvolvimento:
   rfcode --self-improve [--iterations N]
@@ -317,6 +420,12 @@ Desenvolvimento:
 
 API key: ${CONFIG_FILE} ou variável de ambiente NVIDIA_API_KEY`);
     process.exit(0);
+  }
+
+  if (argv.includes('--doctor')) {
+    const items = await runDoctor({ cfg, model: cfg.model, version: VERSION });
+    console.log(formatDoctor(items, { color: { ok: T.green, warn: T.amber, fail: T.red } }));
+    process.exit(items.some((i) => i.status === 'fail') ? 1 : 0);
   }
 
   if (argv[0] === '--painel') {
@@ -340,21 +449,47 @@ API key: ${CONFIG_FILE} ou variável de ambiente NVIDIA_API_KEY`);
   let apiKey = cfg.apiKey || process.env.NVIDIA_API_KEY;
   const ki = argv.indexOf('--key');
   if (ki >= 0) argv.splice(ki, 1);
-  if (!apiKey || ki >= 0) apiKey = await askApiKey(cfg);
+  const { provider } = providers.parseModel(model);
+  // a chave da NVIDIA só é pedida quando o modelo é da NVIDIA; outros provedores usam /provider
+  if (provider === 'nvidia' && (!apiKey || ki >= 0)) apiKey = await askApiKey(cfg);
+  else if (provider !== 'nvidia' && providers.PROVIDERS[provider].needsKey !== false && !providers.keyFor(provider, cfg)) {
+    console.log(`  ${T.amber('!')} ${T.muted(`falta a API key de ${providers.PROVIDERS[provider].name}: use /provider ${provider}`)}`);
+  }
 
   const state = { agent: new Agent({ apiKey, model, cwd: process.cwd(), saveSession: true }), showThinking: false };
+  liveAgent = state.agent;
   const hooks = cliHooks(state);
-  const run = (text) => { state.t0 = Date.now(); return state.agent.send(text, hooks); };
+  // depois de cada resposta, mensagens que ficaram na fila (ex.: depois de Ctrl+C) viram o próximo pedido
+  const drain = async () => {
+    const left = state.agent.pendingUser ? state.agent.pendingUser.splice(0) : [];
+    if (left.length) { state.t0 = Date.now(); await state.agent.send(left.join('\n\n'), hooks); await drain(); }
+  };
+  const run = async (text) => { state.t0 = Date.now(); await state.agent.send(text, hooks); await drain(); };
+  const resume = async () => { state.t0 = Date.now(); await state.agent.resume(hooks); await drain(); };
 
   // --continue / -c: retoma a última conversa desta pasta
   const ci = argv.findIndex((a) => a === '--continue' || a === '-c');
+  const sm = state.agent.sessionManager;
+  const last = sm.list().find((s) => s.cwd === process.cwd());
+  let offerResume = false;
   if (ci >= 0) {
     argv.splice(ci, 1);
-    const sm = state.agent.sessionManager;
-    const last = sm.list().find((s) => s.cwd === process.cwd());
     const msgs = last && sm.load(last.file);
-    if (msgs) { state.agent.messages = msgs; console.log(`  ${T.green('↺')} retomando ${T.bold(last.title)} ${T.muted(`(${msgs.length} mensagens)`)}`); }
-    else console.log(`  ${T.muted('nenhuma conversa anterior nesta pasta')}`);
+    if (msgs) {
+      state.agent.messages = msgs;
+      console.log(`  ${T.green('↺')} retomando ${T.bold(last.title)} ${T.muted(`(${msgs.length} mensagens)`)}`);
+      offerResume = last.status === 'running' && state.agent.interrupted;
+    } else console.log(`  ${T.muted('nenhuma conversa anterior nesta pasta')}`);
+  } else if (!argv.includes('-p') && last && last.status === 'running' && Date.now() - Date.parse(last.updated) < 12 * 3600 * 1000) {
+    // a última tarefa desta pasta parou no meio (terminal fechado, queda): oferece continuar
+    const msgs = sm.load(last.file);
+    if (msgs) {
+      state.agent.messages = msgs;
+      if (state.agent.interrupted) {
+        console.log(`  ${T.amber('!')} a última tarefa nesta pasta foi interrompida: ${T.bold(last.title)}`);
+        offerResume = true;
+      } else { state.agent.messages = []; state.agent.sessionManager = new SessionManager({ cwd: process.cwd() }); }
+    }
   }
 
   process.on('SIGINT', () => {
@@ -362,6 +497,12 @@ API key: ${CONFIG_FILE} ou variável de ambiente NVIDIA_API_KEY`);
     else { console.log(''); process.exit(0); }
   });
   rl.on('SIGINT', () => process.emit('SIGINT'));
+
+  if (offerResume) {
+    const a = ((await ask(`  continuar de onde parou? ${T.lime('s')}/${T.lime('n')} ${prompt()}`)) ?? 'n').trim().toLowerCase();
+    if (['', 's', 'sim', 'y', 'yes'].includes(a)) await resume();
+    else if (ci < 0) { state.agent.messages = []; state.agent.sessionManager = new SessionManager({ cwd: process.cwd() }); }
+  }
 
   const pi = argv.indexOf('-p');
   if (pi >= 0) {

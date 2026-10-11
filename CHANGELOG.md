@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.10.0
+
+- Vários provedores de modelo: NVIDIA, OpenRouter, Groq, OpenAI, Anthropic, Gemini, DeepSeek, Mistral, Ollama, LM Studio e servidores compatíveis com a API da OpenAI (`/provider`, `/models`).
+- Seletor de modelos agrupado por provedor, com detecção de Ollama e LM Studio.
+- Conversas salvas a cada passo; tarefas interrompidas podem ser retomadas ao reabrir o VS Code ou o terminal.
+- Mensagens enviadas durante o trabalho entram em fila e são consideradas no passo seguinte.
+- `/doctor` e `rfcode --doctor` para diagnóstico do ambiente.
+- Log de erros em `~/.rfcode/logs/rfcode.log`, sem chaves de API.
+- Mensagens claras para chave recusada, modelo aposentado e falta de crédito.
+- Guia de contribuição, política de segurança, modelos de issue e análise CodeQL.
+
 ## 1.9.1
 
 - Revisão dos textos da extensão, do terminal e da documentação.

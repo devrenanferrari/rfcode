@@ -182,11 +182,35 @@
       vscode.postMessage({ type: 'command', name: cmd.name, args: cmd.args });
       return;
     }
-    if (busy) return;
     input.value = '';
     autoGrow();
-    setBusy(true);
+    // durante o trabalho a mensagem vai para a fila (o agente a recebe no próximo passo)
+    if (!busy) setBusy(true);
     vscode.postMessage({ type: 'send', text });
+  }
+
+  // Seletor de modelos agrupado por provedor, com atalho para configurar outro provedor.
+  const shortName = (id) => {
+    const i = id.indexOf(':');
+    const bare = i > 0 && !id.slice(0, i).includes('/') ? id.slice(i + 1) : id;
+    return bare.split('/').pop();
+  };
+  function renderModels(models, model) {
+    const groups = new Map();
+    for (const x of models || []) {
+      const g = x.group || 'Modelos';
+      if (!groups.has(g)) groups.set(g, []);
+      groups.get(g).push(x);
+    }
+    let html = '';
+    for (const [g, list] of groups) {
+      html += `<optgroup label="${esc(g)}">${list.map((x) => `<option value="${esc(x.id)}" title="${esc(x.id + (x.desc ? ' · ' + x.desc : ''))}">${esc(shortName(x.id))}</option>`).join('')}</optgroup>`;
+    }
+    html += '<option value="__provider__">Configurar outro provedor…</option>';
+    modelSel.innerHTML = html;
+    modelSel.value = model;
+    modelSel.title = model;
+    modelSel.dataset.current = model;
   }
   sendBtn.addEventListener('click', send);
   input.addEventListener('input', () => { autoGrow(); menuIndex = 0; updateMenu(); });
@@ -204,7 +228,16 @@
     if (e.key === 'Escape' && busy && historyEl.classList.contains('hidden')) { e.preventDefault(); vscode.postMessage({ type: 'stop' }); }
   });
   stopBtn.addEventListener('click', () => vscode.postMessage({ type: 'stop' }));
-  modelSel.addEventListener('change', () => vscode.postMessage({ type: 'setModel', model: modelSel.value }));
+  modelSel.addEventListener('change', () => {
+    if (modelSel.value === '__provider__') {
+      modelSel.value = modelSel.dataset.current || '';
+      vscode.postMessage({ type: 'command', name: 'provider', args: '' });
+      return;
+    }
+    modelSel.dataset.current = modelSel.value;
+    modelSel.title = modelSel.value;
+    vscode.postMessage({ type: 'setModel', model: modelSel.value });
+  });
   autoChk.addEventListener('change', () => vscode.postMessage({ type: 'setAuto', value: autoChk.checked }));
   planEl.addEventListener('click', (e) => {
     if (!e.target.closest('.plan-head')) return;
@@ -455,9 +488,7 @@
         for (const c of commands) for (const a of c.aliases || []) ALIAS[a] = c.name;
         setMode(m.mode);
         $('remoteBtn').classList.toggle('hidden', !m.remote);
-        modelSel.innerHTML = m.models.map((x) => `<option value="${esc(x.id)}" title="${esc(x.desc)}">${esc(x.id.split('/').pop())}</option>`).join('');
-        modelSel.value = m.model;
-        modelSel.title = m.model;
+        renderModels(m.models, m.model);
         autoChk.checked = m.autoApprove;
         state = { cwd: m.cwd, hasKey: m.hasKey };
         $('folder').innerHTML = `${I.folder}<span>${esc(baseName(m.cwd))}</span>`;
@@ -472,9 +503,36 @@
         autoChk.checked = m.value;
         break;
       case 'modelChanged':
-        if (![...modelSel.options].some((o) => o.value === m.model)) modelSel.insertAdjacentHTML('afterbegin', `<option value="${esc(m.model)}">${esc(m.model.split('/').pop())}</option>`);
+        if (![...modelSel.options].some((o) => o.value === m.model)) modelSel.insertAdjacentHTML('afterbegin', `<option value="${esc(m.model)}">${esc(shortName(m.model))}</option>`);
         modelSel.value = m.model;
         modelSel.title = m.model;
+        modelSel.dataset.current = m.model;
+        break;
+      case 'models': renderModels(m.models, m.model); break;
+      case 'queued': {
+        // o agente recebeu as mensagens da fila
+        log.querySelectorAll('.msg.user.queued').forEach((u) => { u.classList.remove('queued'); u.querySelector('.q-tag')?.remove(); });
+        break;
+      }
+      case 'resumable': {
+        hideWelcome();
+        log.querySelector('.resume-card')?.remove();
+        const card = el('div', 'resume-card');
+        card.innerHTML = `<div class="rs-text"><b>A última tarefa foi interrompida.</b><span>O rfcode pode continuar de onde parou.</span></div>
+          <div class="rs-actions"><button type="button" class="primary" data-a="go">Continuar</button><button type="button" class="ghost" data-a="drop">Descartar</button></div>`;
+        card.addEventListener('click', (e) => {
+          const a = e.target.closest('button')?.dataset.a;
+          if (!a) return;
+          card.remove();
+          vscode.postMessage({ type: a === 'go' ? 'resume' : 'discardResume' });
+        });
+        add(card);
+        scroll(true);
+        break;
+      }
+      case 'resuming':
+        log.querySelector('.resume-card')?.remove();
+        setBusy(true);
         break;
       case 'mode': setMode(m.mode); break;
       case 'remote': showRemoteCard(m); break;
@@ -512,10 +570,17 @@
         break;
       case 'user': {
         hideWelcome();
+        const u = el('div', 'msg user' + (m.queued ? ' queued' : ''));
+        u.appendChild(el('div', 'bubble')).textContent = m.text;
+        if (m.queued) {
+          // não interrompe a resposta em andamento: a mensagem fica marcada até o agente recebê-la
+          u.appendChild(el('div', 'q-tag', 'na fila'));
+          add(u);
+          scroll(true);
+          break;
+        }
         setBusy(true);
         current = null;
-        const u = el('div', 'msg user');
-        u.appendChild(el('div', 'bubble')).textContent = m.text;
         add(u);
         scroll(true);
         break;

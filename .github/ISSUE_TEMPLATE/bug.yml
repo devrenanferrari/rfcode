@@ -1,0 +1,42 @@
+name: Bug
+description: Algo não funciona como deveria
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: O que aconteceu
+      description: Descreva o problema e o que você esperava que acontecesse.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Como reproduzir
+      placeholder: |
+        1. Abra o painel do rfcode
+        2. Envie "..."
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Saída do /doctor
+      description: Rode /doctor no painel ou `rfcode --doctor` no terminal e cole o resultado.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log (opcional)
+      description: Últimas linhas de ~/.rfcode/logs/rfcode.log (comando "rfcode: Abrir log de erros"). As chaves de API já vêm omitidas.
+      render: text
+  - type: dropdown
+    id: where
+    attributes:
+      label: Onde
+      options: [Extensão do VS Code, Terminal, Controle remoto (celular)]
+    validations:
+      required: true

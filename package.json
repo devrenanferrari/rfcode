@@ -2,7 +2,7 @@
   "name": "rfcode",
   "displayName": "rfcode",
   "description": "Agente de IA para VS Code com os modelos gratuitos de build.nvidia.com. Edita código, executa testes, pesquisa na web, gera documentos e vídeos e automatiza tarefas no Windows.",
-  "version": "1.9.1",
+  "version": "1.10.0",
   "publisher": "renanferrari",
   "license": "MIT",
   "repository": {
@@ -118,6 +118,21 @@
         "command": "rfcode.remoteStop",
         "title": "Desligar controle remoto",
         "category": "rfcode"
+      },
+      {
+        "command": "rfcode.setProvider",
+        "title": "Configurar provedor de modelos",
+        "category": "rfcode"
+      },
+      {
+        "command": "rfcode.doctor",
+        "title": "Verificar ambiente (doctor)",
+        "category": "rfcode"
+      },
+      {
+        "command": "rfcode.openLog",
+        "title": "Abrir log de erros",
+        "category": "rfcode"
       }
     ],
     "menus": {
@@ -162,7 +177,7 @@
         "rfcode.model": {
           "type": "string",
           "default": "nvidia/nemotron-3-super-120b-a12b",
-          "description": "Modelo de build.nvidia.com usado pelo agente. O modelo precisa suportar chamadas de ferramenta."
+          "description": "Modelo usado pelo agente. Para outros provedores, use o prefixo do provedor (ex.: groq:llama-3.3-70b-versatile, ollama:qwen3:8b). O modelo precisa suportar chamadas de ferramenta."
         },
         "rfcode.autoApprove": {
           "type": "boolean",
