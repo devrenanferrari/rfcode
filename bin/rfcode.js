@@ -6,6 +6,12 @@ const readline = require('readline');
 const {
   Agent, CONFIG_FILE, DEFAULT_MODEL, SUGGESTED_MODELS, loadConfig, saveConfig, validateKey,
 } = require('../lib/agent');
+const { SessionManager } = require('../lib/sessions');
+const { addAllow, suggestRule } = require('../lib/permissions');
+const { remember, readUserMemory, userFile: memoryFile } = require('../lib/memory');
+const {
+  listCommands, parseCommand, expandCustom, reviewFor, PLAN_PREFIX, GO_PROMPT, INIT_PROMPT,
+} = require('../lib/commands');
 
 // ---------- cores ----------
 const c = {
@@ -75,15 +81,25 @@ function cliHooks(state) {
         if (preview.more) console.log(c.dim(`  ... (+${preview.more} linhas)`));
       }
     },
-    async approve() {
-      const a = ((await ask(c.yellow('  Permitir? [s]im / [n]ão / [t]odos nesta sessão: '))) ?? 'n').trim().toLowerCase();
+    async approve({ forced, name, args } = {}) {
+      if (forced) console.log(c.red(c.bold('  ⚠ Ação importante (enviar, pagar ou excluir). Confira antes de permitir.')));
+      const rule = forced ? '' : suggestRule(name, args);
+      const a = ((await ask(c.yellow(`  Permitir? [s]im / [n]ão / [t]odos nesta sessão${rule ? ` / [p]ara sempre (${rule})` : ''}: `))) ?? 'n').trim().toLowerCase();
       if (['t', 'todos', 'a', 'all'].includes(a)) return 'all';
+      if (rule && ['p', 'sempre'].includes(a)) { console.log(c.dim(`  Regra salva em ${addAllow(rule)}`)); return 'yes'; }
       if (['s', 'sim', 'y', 'yes', ''].includes(a)) return 'yes';
       const why = ((await ask(c.dim('  Motivo / instrução para o modelo (opcional): '))) || '').trim();
       console.log(c.red('  ✗ negado'));
       return { deny: why };
     },
     onCommandOutput(s) { out(c.dim(s)); },
+    async ask({ question, options }) {
+      console.log(c.bold(c.cyan(`\n? ${question}`)));
+      (options || []).forEach((o, i) => console.log(`  ${c.bold(String(i + 1))}. ${o}`));
+      const a = ((await ask(c.cyan(options && options.length ? '  Número ou resposta: ' : '  Resposta: '))) ?? '').trim();
+      const n = parseInt(a, 10);
+      return options && n >= 1 && n <= options.length && String(n) === a ? options[n - 1] : a;
+    },
     onToolResult({ name, output, error }) {
       if (error) { if (!output.startsWith('O usuário NEGOU')) console.log(c.red('  ⎿ ' + output.split('\n')[0])); return; }
       if (name === 'run_command') return;
@@ -108,28 +124,66 @@ function cliHooks(state) {
 }
 
 // ---------- comandos ----------
+// Devolve { send, display } quando o comando vira um pedido ao agente.
 async function handleCommand(state, cfg, line) {
-  const [cmd, ...rest] = line.slice(1).split(/\s+/);
-  const arg = rest.join(' ').trim();
+  const raw = line.slice(1).split(/\s+/)[0].toLowerCase();
+  const parsed = parseCommand(line) || { name: raw, args: '' };
+  // /sessions e /resume têm comportamento próprio na CLI (listar e retomar por número)
+  const cmd = raw === 'sessions' || raw === 'resume' ? raw : parsed.name;
+  const arg = parsed.args;
   const agent = state.agent;
   switch (cmd) {
-    case 'help':
-      console.log(`
-${c.bold('Comandos:')}
-  /help             esta ajuda
-  /model [nome]     mostra ou troca o modelo
-  /models           lista modelos sugeridos
-  /key              trocar a API key da NVIDIA
-  /clear            limpa a conversa
-  /undo             desfaz a última alteração de arquivo feita pelo agente
-  /auto             liga/desliga aprovação automática de edições e comandos
-  /think            mostra/oculta o raciocínio do modelo
-  /cd <dir>         muda o diretório de trabalho
-  /sessions         lista as 10 últimas sessões salvas
-  /resume <n>       retoma a n-ésima sessão da lista (padrão: a mais recente)
-  /exit             sair
-${c.dim('Dica: termine uma linha com \\ para continuar escrevendo na próxima. Ctrl+C interrompe a resposta.')}`);
-      return;
+    case 'help': {
+      console.log('\n' + c.bold('Comandos:'));
+      for (const k of listCommands(agent.cwd, 'cli')) {
+        const name = `/${k.name}${k.args ? ' ' + k.args : ''}`;
+        console.log(`  ${name.padEnd(20)} ${k.desc}${k.custom ? c.dim(' (personalizado)') : ''}`);
+      }
+      console.log(`  ${'/models'.padEnd(20)} lista modelos sugeridos`);
+      console.log(`  ${'/sessions'.padEnd(20)} lista as 10 últimas conversas; /resume <n> retoma uma`);
+      console.log(c.dim('Comandos personalizados: .rfcode/commands/<nome>.md no projeto ou ~/.rfcode/commands ($ARGUMENTS = texto depois do comando).'));
+      console.log(c.dim('Dica: termine uma linha com \\ para continuar escrevendo na próxima. Ctrl+C interrompe a resposta.'));
+      return null;
+    }
+    case 'new':
+      agent.clear();
+      agent.planOnly = false;
+      agent.sessionManager = new SessionManager({ cwd: agent.cwd });
+      console.log(c.dim('Conversa nova.'));
+      return null;
+    case 'history':
+      return handleCommand(state, cfg, '/sessions');
+    case 'plan':
+      if (!arg) { console.log(c.yellow('Use /plan <pedido>. O rfcode investiga e propõe um plano sem alterar nada; depois /go executa.')); return null; }
+      agent.planOnly = true;
+      console.log(c.yellow('Modo plano: nada será alterado até você digitar /go.'));
+      return { send: PLAN_PREFIX + arg };
+    case 'go':
+      if (!agent.planOnly) { console.log(c.yellow('Nenhum plano aguardando. Use /plan <pedido> primeiro.')); return null; }
+      agent.planOnly = false;
+      return { send: GO_PROMPT };
+    case 'init':
+      return { send: INIT_PROMPT };
+    case 'review': {
+      const r = reviewFor(agent.cwd);
+      if (r.reason) { console.log(c.dim('Nada para revisar: ' + r.reason)); return null; }
+      return { send: r.send };
+    }
+    case 'memory': {
+      if (arg) { console.log(c.green(remember(arg, 'usuario'))); return null; }
+      const mem = readUserMemory();
+      console.log(mem ? c.dim(memoryFile() + '\n') + mem : c.dim('A memória ainda está vazia. Diga "lembre que..." ou use /memory <texto>.'));
+      return null;
+    }
+    case 'compact':
+      if (agent.messages.length < 4) { console.log(c.dim('A conversa ainda é curta; não precisa resumir.')); return null; }
+      out(c.dim('Resumindo a conversa... '));
+      try {
+        await agent.compact();
+        agent.sessionManager.save(agent.messages);
+        console.log(c.green('pronto.'));
+      } catch (e) { console.log(c.red(e.message)); }
+      return null;
     case 'model':
       if (arg) { agent.model = arg; cfg.model = arg; saveConfig(cfg); }
       console.log(`Modelo: ${c.bold(agent.model)}`);
@@ -189,9 +243,13 @@ ${c.dim('Dica: termine uma linha com \\ para continuar escrevendo na próxima. C
     }
     case 'exit': case 'quit': case 'sair':
       rl.close(); process.exit(0);
-    default:
+    default: {
+      const text = expandCustom(cmd, arg, agent.cwd);
+      if (text) return { send: text };
       console.log(c.red(`Comando desconhecido: /${cmd}. Use /help.`));
+    }
   }
+  return null;
 }
 
 // ---------- main ----------
@@ -280,7 +338,11 @@ API key: ${CONFIG_FILE} (ou variável de ambiente NVIDIA_API_KEY)`);
     }
     input = input.trim();
     if (!input) continue;
-    if (input.startsWith('/')) { await handleCommand(state, cfg, input); continue; }
+    if (input.startsWith('/')) {
+      const r = await handleCommand(state, cfg, input);
+      if (r && r.send) await state.agent.send(r.send, hooks);
+      continue;
+    }
     await state.agent.send(input, hooks);
   }
   process.exit(0);
