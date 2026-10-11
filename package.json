@@ -5,6 +5,14 @@
   "version": "1.8.0",
   "publisher": "renan",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/devrenanferrari/rfcode.git"
+  },
+  "homepage": "https://github.com/devrenanferrari/rfcode#readme",
+  "bugs": {
+    "url": "https://github.com/devrenanferrari/rfcode/issues"
+  },
   "icon": "media/logo.png",
   "engines": {
     "vscode": "^1.90.0",
