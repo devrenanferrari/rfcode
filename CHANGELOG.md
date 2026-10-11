@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.0
+- Terminal redesenhado: logo em pixel art, cartão com modelo e pasta, spinner com tempo, ações com ícones, diffs coloridos, respostas com markdown formatado e resumo de tokens e tempo.
+- Corrige travamento do banner em pastas com caminho muito longo.
+- Publicado no VS Code Marketplace como renanferrari.rfcode.
+
 ## 1.8.1
 - Prints da extensão no README e na página do Marketplace.
 - Nome de exibição sem marcas de terceiros.

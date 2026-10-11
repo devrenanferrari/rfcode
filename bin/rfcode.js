@@ -13,16 +13,11 @@ const {
   listCommands, parseCommand, expandCustom, reviewFor, PLAN_PREFIX, GO_PROMPT, INIT_PROMPT,
 } = require('../lib/commands');
 
-// ---------- cores ----------
-const c = {
-  dim: (s) => `\x1b[2m${s}\x1b[0m`,
-  bold: (s) => `\x1b[1m${s}\x1b[0m`,
-  green: (s) => `\x1b[32m${s}\x1b[0m`,
-  red: (s) => `\x1b[31m${s}\x1b[0m`,
-  yellow: (s) => `\x1b[33m${s}\x1b[0m`,
-  cyan: (s) => `\x1b[36m${s}\x1b[0m`,
-  magenta: (s) => `\x1b[35m${s}\x1b[0m`,
-};
+const { c: T, banner, MarkdownStream, Spinner, toolLine, prompt } = require('../lib/tui');
+const VERSION = require('../package.json').version;
+
+// ---------- cores (paleta da marca, ver lib/tui.js) ----------
+const c = { dim: T.muted, bold: T.bold, green: T.green, red: T.red, yellow: T.amber, cyan: T.cyan, magenta: T.lime };
 const out = (s) => process.stdout.write(s);
 
 // ---------- readline ----------
@@ -59,67 +54,114 @@ async function askApiKey(cfg) {
 
 // ---------- ligação do agente com o terminal ----------
 function cliHooks(state) {
-  let reasoningShown = false, textStarted = false;
+  const spin = new Spinner(out);
+  let md = null, reasoningShown = false, cmdOpen = false, cmdTail = '\n';
+  const endText = () => { if (md) { md.flush(); md = null; } };
+  const endCmd = () => { if (cmdOpen) { if (!cmdTail.endsWith('\n')) out('\n'); cmdOpen = false; } };
+  // caminhos dentro da pasta de trabalho aparecem relativos ("src/a.js" em vez de "C:\...\src\a.js")
+  const rel = (label) => {
+    const cwd = state.agent.cwd;
+    return label.split(cwd + path.sep).join('').split(cwd.replace(/\\/g, '/') + '/').join('');
+  };
+  const fmtTokens = (n) => (n >= 1000 ? `${(n / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mil` : String(n));
   return {
-    onThinking() { reasoningShown = false; textStarted = false; out(c.dim('⠿ pensando...\r')); },
-    onResponseStart() { out('\r\x1b[2K'); },
+    onThinking() { reasoningShown = false; spin.start('pensando'); },
+    onResponseStart() { spin.stop(); },
     onReasoning(t) {
       if (!state.showThinking) return;
-      if (!reasoningShown) { out(c.dim('\n💭 ')); reasoningShown = true; }
-      out(c.dim(t));
+      spin.stop();
+      if (!reasoningShown) { out(`\n  ${T.muted('✻ raciocínio')}\n  `); reasoningShown = true; }
+      out(T.muted(t.replace(/\n/g, '\n  ')));
     },
     onText(t) {
-      if (!textStarted) { out(reasoningShown ? '\n\n' : '\n'); textStarted = true; }
-      out(t);
+      spin.stop();
+      if (!md) { out(reasoningShown ? '\n\n' : '\n'); md = new MarkdownStream(out); }
+      md.push(t);
     },
-    onAssistantEnd() { if (textStarted || reasoningShown) out('\n'); },
-    onToolCall({ label, preview }) {
-      console.log(c.cyan(`\n● ${label}`));
+    onAssistantEnd() { endText(); if (reasoningShown) out('\n'); },
+    onToolCall({ name, label, preview }) {
+      spin.stop();
+      endText();
+      endCmd();
+      if (name === 'update_plan') return; // o plano aparece em onPlan
+      console.log(toolLine(rel(label)));
       if (preview) {
-        for (const l of preview.removed) console.log(c.red('- ' + l));
-        for (const l of preview.added) console.log(c.green('+ ' + l));
-        if (preview.more) console.log(c.dim(`  ... (+${preview.more} linhas)`));
+        for (const l of preview.removed) console.log(`    ${T.red('- ' + l)}`);
+        for (const l of preview.added) console.log(`    ${T.green('+ ' + l)}`);
+        if (preview.more) console.log(`    ${T.muted(`… mais ${preview.more} linhas`)}`);
       }
+      spin.start('executando');
     },
     async approve({ forced, name, args } = {}) {
-      if (forced) console.log(c.red(c.bold('  ⚠ Ação importante (enviar, pagar ou excluir). Confira antes de permitir.')));
+      spin.stop();
+      if (forced) console.log(`  ${T.red('⚠')} ${T.bold(T.red('Ação importante (enviar, pagar ou excluir). Confira antes de permitir.'))}`);
       const rule = forced ? '' : suggestRule(name, args);
-      const a = ((await ask(c.yellow(`  Permitir? [s]im / [n]ão / [t]odos nesta sessão${rule ? ` / [p]ara sempre (${rule})` : ''}: `))) ?? 'n').trim().toLowerCase();
-      if (['t', 'todos', 'a', 'all'].includes(a)) return 'all';
-      if (rule && ['p', 'sempre'].includes(a)) { console.log(c.dim(`  Regra salva em ${addAllow(rule)}`)); return 'yes'; }
-      if (['s', 'sim', 'y', 'yes', ''].includes(a)) return 'yes';
-      const why = ((await ask(c.dim('  Motivo / instrução para o modelo (opcional): '))) || '').trim();
-      console.log(c.red('  ✗ negado'));
+      const key = (k, txt) => `${T.lime(T.bold(k))} ${T.muted(txt)}`;
+      console.log(`  ${T.amber('?')} ${T.bold('Permitir?')}  ${key('s', 'sim')}  ${key('n', 'não')}  ${key('t', 'tudo nesta conversa')}${rule ? `  ${key('p', 'sempre: ' + rule)}` : ''}`);
+      const a = ((await ask(`    ${prompt()}`)) ?? 'n').trim().toLowerCase();
+      let r;
+      if (['t', 'todos', 'tudo', 'a', 'all'].includes(a)) r = 'all';
+      else if (rule && ['p', 'sempre'].includes(a)) { console.log(`    ${T.muted('regra salva em ' + addAllow(rule))}`); r = 'yes'; }
+      else if (['s', 'sim', 'y', 'yes', ''].includes(a)) r = 'yes';
+      if (r) { spin.start('executando'); return r; }
+      const why = ((await ask(`    ${T.muted('o que fazer em vez disso? (opcional)')} ${prompt()}`)) || '').trim();
+      console.log(`    ${T.red('✗ negado')}`);
       return { deny: why };
     },
-    onCommandOutput(s) { out(c.dim(s)); },
+    onCommandOutput(s) {
+      spin.stop();
+      if (!cmdOpen) { out('    '); cmdOpen = true; }
+      out(T.muted(s.replace(/\r?\n(?!$)/g, '\n    ')));
+      cmdTail = s;
+    },
     async ask({ question, options }) {
-      console.log(c.bold(c.cyan(`\n? ${question}`)));
-      (options || []).forEach((o, i) => console.log(`  ${c.bold(String(i + 1))}. ${o}`));
-      const a = ((await ask(c.cyan(options && options.length ? '  Número ou resposta: ' : '  Resposta: '))) ?? '').trim();
+      spin.stop();
+      endText();
+      console.log(`\n  ${T.lime('?')} ${T.bold(question)}`);
+      (options || []).forEach((o, i) => console.log(`    ${T.lime(String(i + 1))} ${o}`));
+      const a = ((await ask(`    ${options && options.length ? T.muted('número ou resposta') + ' ' : ''}${prompt()}`)) ?? '').trim();
       const n = parseInt(a, 10);
       return options && n >= 1 && n <= options.length && String(n) === a ? options[n - 1] : a;
     },
     onToolResult({ name, output, error }) {
-      if (error) { if (!output.startsWith('O usuário NEGOU')) console.log(c.red('  ⎿ ' + output.split('\n')[0])); return; }
-      if (name === 'run_command') return;
+      spin.stop();
+      endCmd();
+      if (error) {
+        if (output.startsWith('O usuário NEGOU')) return;
+        console.log(`    ${T.red('✗ ' + output.replace(/^Erro:\s*/, '').split('\n')[0].slice(0, 160))}`);
+        return;
+      }
+      if (name === 'update_plan') return;
+      if (name === 'run_command') {
+        const code = /\[exit code: (-?\d+|null)\]\s*$/.exec(output);
+        if (code) console.log(`    ${code[1] === '0' ? T.green('✓ ok') : T.amber(`⎿ saiu com código ${code[1]}`)}`);
+        return;
+      }
       const lines = output.split('\n');
-      const summary = name === 'read_file'
-        ? `${lines.length} linhas lidas`
-        : lines.slice(0, 3).join('\n  ') + (lines.length > 3 ? c.dim(` ... (+${lines.length - 3})`) : '');
-      console.log(c.dim('  ⎿ ' + summary));
+      const summary = name === 'read_file' ? `${lines.length} linhas` : lines[0].slice(0, 140) + (lines.length > 1 ? ` (+${lines.length - 1} linhas)` : '');
+      console.log(`    ${T.muted('⎿ ' + summary)}`);
     },
-    onRetry(msg) { console.log(c.yellow('\n' + msg)); },
-    onError(msg) { out('\r\x1b[2K'); console.log(c.red('\nErro: ' + msg)); },
-    onAborted() { out('\r\x1b[2K'); console.log(c.yellow('\n[interrompido]')); },
+    onRetry(msg) { spin.stop(); console.log(`  ${T.amber('↻')} ${T.muted(msg)}`); },
+    onError(msg) { spin.stop(); endText(); console.log(`\n  ${T.red('✗')} ${T.red(msg)}`); },
+    onAborted() { spin.stop(); endText(); console.log(`\n  ${T.amber('■ interrompido')}`); },
     onPlan(p) {
-      const icon = { done: c.green('☑'), in_progress: c.cyan('◐'), pending: c.dim('☐') };
-      if (p.goal) console.log(c.bold(`  🎯 ${p.goal}`));
-      for (const s of p.steps) console.log(`  ${icon[s.status]} ${s.status === 'done' ? c.dim(s.text) : s.status === 'in_progress' ? c.bold(s.text) : s.text}`);
-      if (p.why) console.log(c.dim(`     ↳ ${p.why}`));
+      spin.stop();
+      const done = p.steps.filter((s) => s.status === 'done').length;
+      const icon = { done: T.green('✓'), in_progress: T.lime('▸'), pending: T.muted('○') };
+      console.log(`\n  ${T.lime('◆')} ${T.bold(p.goal || 'Plano')} ${T.muted(`${done}/${p.steps.length}`)}`);
+      for (const s of p.steps) console.log(`    ${icon[s.status]} ${s.status === 'done' ? T.muted(s.text) : s.status === 'in_progress' ? T.bold(s.text) : s.text}`);
+      if (p.why) console.log(`    ${T.muted('↳ ' + p.why)}`);
+      spin.start('executando');
     },
     onUsage(u) { state.usage = u; },
-    onDone() { if (state.usage) console.log(c.dim(`  · ${state.usage.total.toLocaleString('pt-BR')} tokens nesta sessão`)); },
+    onDone() {
+      spin.stop();
+      endText();
+      endCmd();
+      const secs = state.t0 ? Math.round((Date.now() - state.t0) / 1000) : 0;
+      const parts = [state.usage && `${fmtTokens(state.usage.total)} tokens na conversa`, secs && `${secs}s`].filter(Boolean);
+      if (parts.length) console.log(`\n  ${T.muted('· ' + parts.join(' · '))}`);
+    },
   };
 }
 
@@ -290,7 +332,7 @@ API key: ${CONFIG_FILE} (ou variável de ambiente NVIDIA_API_KEY)`);
   const mi = argv.indexOf('--model');
   if (mi >= 0 && argv[mi + 1]) { model = argv[mi + 1]; argv.splice(mi, 2); }
 
-  console.log(c.magenta(c.bold('\n  ╭───────────────────────────╮\n  │   rfcode  ·  NVIDIA free  │\n  ╰───────────────────────────╯')));
+  if (!argv.includes('-p')) out(banner({ version: VERSION, model, cwd: process.cwd(), memory: !!readUserMemory() }));
 
   let apiKey = cfg.apiKey || process.env.NVIDIA_API_KEY;
   const ki = argv.indexOf('--key');
@@ -299,8 +341,7 @@ API key: ${CONFIG_FILE} (ou variável de ambiente NVIDIA_API_KEY)`);
 
   const state = { agent: new Agent({ apiKey, model, cwd: process.cwd(), saveSession: true }), showThinking: false };
   const hooks = cliHooks(state);
-
-  console.log(c.dim(`  modelo: ${model}\n  pasta:  ${process.cwd()}\n  /help para comandos\n`));
+  const run = (text) => { state.t0 = Date.now(); return state.agent.send(text, hooks); };
 
   // --continue / -c: retoma a última conversa desta pasta
   const ci = argv.findIndex((a) => a === '--continue' || a === '-c');
@@ -309,30 +350,30 @@ API key: ${CONFIG_FILE} (ou variável de ambiente NVIDIA_API_KEY)`);
     const sm = state.agent.sessionManager;
     const last = sm.list().find((s) => s.cwd === process.cwd());
     const msgs = last && sm.load(last.file);
-    if (msgs) { state.agent.messages = msgs; console.log(c.green(`  Retomando "${last.title}" (${msgs.length} mensagens).\n`)); }
-    else console.log(c.dim('  Nenhuma conversa anterior nesta pasta.\n'));
+    if (msgs) { state.agent.messages = msgs; console.log(`  ${T.green('↺')} retomando ${T.bold(last.title)} ${T.muted(`(${msgs.length} mensagens)`)}`); }
+    else console.log(`  ${T.muted('nenhuma conversa anterior nesta pasta')}`);
   }
 
   process.on('SIGINT', () => {
     if (state.agent.busy) state.agent.abort();
-    else { console.log('\nAté mais!'); process.exit(0); }
+    else { console.log(`\n  ${T.muted('até mais!')}\n`); process.exit(0); }
   });
   rl.on('SIGINT', () => process.emit('SIGINT'));
 
   const pi = argv.indexOf('-p');
   if (pi >= 0) {
     state.agent.autoApprove = true;
-    await state.agent.send(argv.slice(pi + 1).join(' '), hooks);
+    await run(argv.slice(pi + 1).join(' '));
     rl.close();
     process.exit(0);
   }
-  if (argv.length) await state.agent.send(argv.join(' '), hooks);
+  if (argv.length) await run(argv.join(' '));
 
   while (true) {
-    let input = await ask(c.bold(c.magenta('\n> ')));
+    let input = await ask(`\n${prompt()}`);
     if (input === null) break;
     while (input.endsWith('\\')) {
-      const more = await ask(c.dim('  '));
+      const more = await ask(`${T.muted('·')} `);
       if (more === null) break;
       input = input.slice(0, -1) + '\n' + more;
     }
@@ -340,10 +381,10 @@ API key: ${CONFIG_FILE} (ou variável de ambiente NVIDIA_API_KEY)`);
     if (!input) continue;
     if (input.startsWith('/')) {
       const r = await handleCommand(state, cfg, input);
-      if (r && r.send) await state.agent.send(r.send, hooks);
+      if (r && r.send) await run(r.send);
       continue;
     }
-    await state.agent.send(input, hooks);
+    await run(input);
   }
   process.exit(0);
 }
