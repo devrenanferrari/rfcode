@@ -270,7 +270,8 @@ function cliHooks(state) {
       const u = state.usage;
       const parts = [
         u && u.window && `contexto ${Math.min(100, Math.round((u.context / u.window) * 100))}%`,
-        u && `${fmtTokens(u.total)} tokens na conversa`,
+        // soma de todas as chamadas (cada uma reenvia a conversa): é o volume processado, não o tamanho do contexto
+        u && `${fmtTokens(u.total)} tokens processados`,
         secs && `${secs}s`,
       ].filter(Boolean);
       if (parts.length) console.log(`\n  ${T.muted('· ' + parts.join(' · '))}`);

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.14.2
+
+- Limite de pedidos do provedor: espera curta na primeira vez e, se persistir, segue com um modelo reserva (o de melhor qualidade disponível) em vez de ficar parado; volta ao principal depois de alguns passos. No teste de estresse, tarefas de código ficaram até 3 vezes mais rápidas.
+- Leituras pedidas juntas (arquivos, buscas, subagentes) rodam em paralelo.
+- Conteúdo de arquivos, páginas e APIs que tenta dar ordens é ignorado e o usuário é avisado.
+- Refatorações só terminam depois de buscar de novo o padrão antigo; recursos inexistentes são reportados sem insistência.
+- O terminal mostra "tokens processados" (soma das chamadas) em vez de "tokens na conversa", que parecia o tamanho do contexto.
+
 ## 1.14.1
 
 - Missões: conclusão reconhecida mesmo com markdown ("**MISSÃO CONCLUÍDA**"); o diário descreve as últimas ações quando o ciclo termina no limite de passos; o limite de passos deixa de aparecer como erro; estado ao vivo no /missao status durante o ciclo; opção --passos.
