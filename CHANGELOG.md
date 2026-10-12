@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.16.0
+
+- Modelo auto (`/model auto`, `--model auto` ou "auto" no seletor): usa sempre o modelo mais forte disponível entre todos os provedores com chave (nota de força por modelo) e troca sozinho, sem espera, quando um atinge o limite de pedidos ou para de responder; volta ao melhor assim que a cota libera. O seletor mostra o modelo em uso ("auto · kimi-k3"). Lista própria em `autoModels` no config.json.
+- Esforço (`/effort baixo|medio|alto`, `--effort` ou o seletor ao lado do Auto): baixo responde rápido e investiga só o necessário; alto investiga o contexto completo e só conclui depois de testes e revisão do diff. Nos modelos que aceitam (gpt-oss, o-series/GPT-5, Gemini 2.5+) também vai como `reasoning_effort`; se o provedor recusar, o pedido é refeito sem ele.
+
+## 1.15.2
+
+- Corrigido screenshot quebrado no chat: a política de segurança do painel bloqueava imagens em data URL.
+- Clique na imagem do screenshot abre o visualizador padrão do Windows (antes tentava abrir como texto).
+
+## 1.15.1
+
+- Capturas de tela (screenshot) aparecem como imagem na conversa, para o usuário acompanhar o que o agente está vendo.
+- Instruções de controle do PC: diálogo nativo de arquivo usa o campo "Nome:" com caminho completo + Enter (mais confiável que clicar no botão).
+
+## 1.15.0
+
+- Envio de imagens e arquivos no chat: botão de clipe, Ctrl+V para colar imagem, até 5 anexos de 4 MB. Imagens vão ao modelo em base64 (com fallback para modelos sem visão), arquivos de texto são embutidos, binários ficam como referência ao arquivo salvo.
+- Controle remoto pelo celular: limite de upload aumentado para 25 MB e rota autenticada para servir anexos.
+
 ## 1.14.2
 
 - Limite de pedidos do provedor: espera curta na primeira vez e, se persistir, segue com um modelo reserva (o de melhor qualidade disponível) em vez de ficar parado; volta ao principal depois de alguns passos. No teste de estresse, tarefas de código ficaram até 3 vezes mais rápidas.

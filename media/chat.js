@@ -4,8 +4,48 @@
   const { render: md, esc } = window.rfMarkdown;
   const $ = (id) => document.getElementById(id);
   const log = $('log'), input = $('input'), sendBtn = $('send'), stopBtn = $('stop');
-  const modelSel = $('model'), autoChk = $('auto'), statusEl = $('status'), planEl = $('plan');
+  const modelSel = $('model'), autoChk = $('auto'), statusEl = $('status'), planEl = $('plan'), effortSel = $('effort');
+  const attachBtn = $('attach'), fileInput = $('fileInput'), chipsEl = $('chips');
   const LOGO = document.body.dataset.logo;
+
+  // ---------- anexos (imagens e arquivos) ----------
+  const MAX_ATTACH = 5;
+  const MAX_ATTACH_BYTES = 4 * 1024 * 1024; // por arquivo (base64 fica ~33% maior)
+  let attachments = []; // { name, mime, data (base64), previewUrl }
+  const isImage = (mime) => /^image\//.test(mime || '');
+  const fmtSize = (n) => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+
+  function renderChips() {
+    chipsEl.classList.toggle('hidden', !attachments.length);
+    chipsEl.innerHTML = attachments.map((a, i) =>
+      `<span class="chip" title="${esc(a.name)} · ${fmtSize(a.size)}">${isImage(a.mime) ? `<img src="${a.previewUrl}" alt="">` : `<span class="chip-ic">${I.clip}</span>`}<span class="chip-name">${esc(a.name)}</span><button type="button" class="chip-x" data-i="${i}" title="Remover anexo">${I.x}</button></span>`).join('');
+  }
+  function addFiles(files) {
+    for (const f of files) {
+      if (attachments.length >= MAX_ATTACH) { note('info', `Máximo de ${MAX_ATTACH} anexos por mensagem.`); break; }
+      if (f.size > MAX_ATTACH_BYTES) { note('info', `"${f.name}" tem ${fmtSize(f.size)}; o limite é ${fmtSize(MAX_ATTACH_BYTES)} por arquivo.`); continue; }
+      const mime = f.type || 'application/octet-stream';
+      const reader = new FileReader();
+      reader.onload = () => {
+        const data = String(reader.result).split(',')[1] || '';
+        attachments.push({ name: f.name, mime, size: f.size, data, previewUrl: isImage(mime) ? String(reader.result) : '' });
+        renderChips();
+      };
+      reader.readAsDataURL(f);
+    }
+  }
+  attachBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => { addFiles([...fileInput.files]); fileInput.value = ''; });
+  chipsEl.addEventListener('click', (e) => {
+    const b = e.target.closest('.chip-x');
+    if (!b) return;
+    attachments.splice(+b.dataset.i, 1);
+    renderChips();
+  });
+  input.addEventListener('paste', (e) => {
+    const files = [...(e.clipboardData?.files || [])];
+    if (files.length) { e.preventDefault(); addFiles(files); }
+  });
 
   let busy = false;
   let current = null;      // { el, text, reasoning, body } da resposta em andamento
@@ -31,6 +71,7 @@
     bug: svg('<ellipse cx="8" cy="9.5" rx="3.5" ry="4.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 5.3v8.4M4.5 8H1.8M14.2 8h-2.7M4.7 11.5l-2.2 1.3M11.3 11.5l2.2 1.3M5.6 3.3L6.6 5M10.4 3.3L9.4 5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>'),
     flask: svg('<path d="M6 1.8h4M6.7 1.8v4.4L2.6 12.8a1 1 0 00.9 1.5h9a1 1 0 00.9-1.5L9.3 6.2V1.8M4.3 10h7.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>'),
     branch: svg('<circle cx="4.5" cy="3.5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="4.5" cy="12.5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="11.5" cy="5.5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 5.1v5.8M11.5 7.1c0 2.4-2.2 3-5.4 4.2" fill="none" stroke="currentColor" stroke-width="1.3"/>'),
+    clip: svg('<path d="M10.5 3.5L4.8 9.2a2.6 2.6 0 003.7 3.7l6-6a1.7 1.7 0 00-2.4-2.4l-5.6 5.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>'),
   };
 
   const SUGGESTIONS = [
@@ -126,7 +167,7 @@
           <span><b>${esc(s.title)}</b><small>${esc(s.sub)}</small></span>
         </button>`).join('')}
       </div>
-      <p class="tips">Use <code>@arquivo</code> para anexar um arquivo · <kbd>Esc</kbd> interrompe</p>`;
+      <p class="tips">Use <code>@arquivo</code> para anexar um arquivo · clipe ou Ctrl+V para imagens · <kbd>Esc</kbd> interrompe</p>`;
     w.querySelector('#keyBtn')?.addEventListener('click', () => vscode.postMessage({ type: 'setKey' }));
     w.querySelectorAll('.sugg').forEach((b) => b.addEventListener('click', () => {
       input.value = SUGGESTIONS[+b.dataset.i].prompt;
@@ -185,23 +226,25 @@
 
   function send() {
     const text = input.value.trim();
-    if (!text) return;
-    const cmd = text.startsWith('/') ? parseCmd(text) : null;
+    if (!text && !attachments.length) return;
+    const cmd = text.startsWith('/') && !attachments.length ? parseCmd(text) : null;
     if (cmd) {
       input.value = '';
       autoGrow();
       closeMenu();
       if (cmd.name === 'help') return showHelp();
       if (cmd.name === 'history') return openHistory();
-      if (busy && !['model', 'auto', 'remote', 'undo'].includes(cmd.name)) { note('info', 'Espere a resposta atual terminar para usar este comando.'); return; }
+      if (busy && !['model', 'effort', 'auto', 'remote', 'undo'].includes(cmd.name)) { note('info', 'Espere a resposta atual terminar para usar este comando.'); return; }
       vscode.postMessage({ type: 'command', name: cmd.name, args: cmd.args });
       return;
     }
     input.value = '';
     autoGrow();
+    const atts = attachments.splice(0);
+    renderChips();
     // durante o trabalho a mensagem vai para a fila (o agente a recebe no próximo passo)
     if (!busy) setBusy(true);
-    vscode.postMessage({ type: 'send', text });
+    vscode.postMessage({ type: 'send', text, attachments: atts.map(({ name, mime, data }) => ({ name, mime, data })) });
   }
 
   // Seletor de modelos agrupado por provedor, com atalho para configurar outro provedor.
@@ -210,6 +253,18 @@
     const bare = i > 0 && !id.slice(0, i).includes('/') ? id.slice(i + 1) : id;
     return bare.split('/').pop();
   };
+  // modo auto: a opção mostra o modelo que está em uso agora ("auto · kimi-k3")
+  let autoInUse = '';
+  function labelAuto() {
+    const o = [...modelSel.options].find((x) => x.value === 'auto');
+    if (!o) return;
+    o.textContent = autoInUse ? `auto · ${shortName(autoInUse)}` : 'auto';
+    if (modelSel.value === 'auto') modelSel.title = autoInUse ? `Modo auto, usando ${autoInUse} agora. Troca sozinho no limite de pedidos.` : 'Modo auto: escolhe o melhor disponível e troca sozinho no limite de pedidos.';
+  }
+  function setEffort(v) {
+    effortSel.value = v || 'medium';
+    effortSel.parentElement.classList.toggle('high', effortSel.value === 'high');
+  }
   function renderModels(models, model) {
     const groups = new Map();
     for (const x of models || []) {
@@ -226,6 +281,7 @@
     modelSel.value = model;
     modelSel.title = model;
     modelSel.dataset.current = model;
+    labelAuto();
   }
   sendBtn.addEventListener('click', send);
   input.addEventListener('input', () => { autoGrow(); menuIndex = 0; updateMenu(); });
@@ -251,7 +307,13 @@
     }
     modelSel.dataset.current = modelSel.value;
     modelSel.title = modelSel.value;
+    autoInUse = '';
+    labelAuto();
     vscode.postMessage({ type: 'setModel', model: modelSel.value });
+  });
+  effortSel.addEventListener('change', () => {
+    setEffort(effortSel.value);
+    vscode.postMessage({ type: 'setEffort', effort: effortSel.value });
   });
   autoChk.addEventListener('change', () => vscode.postMessage({ type: 'setAuto', value: autoChk.checked }));
   planEl.addEventListener('click', (e) => {
@@ -516,6 +578,7 @@
         setMode(m.mode);
         $('remoteBtn').classList.toggle('hidden', !m.remote);
         renderModels(m.models, m.model);
+        setEffort(m.effort);
         autoChk.checked = m.autoApprove;
         state = { cwd: m.cwd, hasKey: m.hasKey };
         $('folder').innerHTML = `${I.folder}<span>${esc(baseName(m.cwd))}</span>`;
@@ -534,7 +597,10 @@
         modelSel.value = m.model;
         modelSel.title = m.model;
         modelSel.dataset.current = m.model;
+        labelAuto();
         break;
+      case 'modelInUse': autoInUse = m.model; labelAuto(); break;
+      case 'effortChanged': setEffort(m.effort); break;
       case 'models': renderModels(m.models, m.model); break;
       case 'queued': {
         // o agente recebeu as mensagens da fila
@@ -598,7 +664,22 @@
       case 'user': {
         hideWelcome();
         const u = el('div', 'msg user' + (m.queued ? ' queued' : ''));
-        u.appendChild(el('div', 'bubble')).textContent = m.text;
+        const bubble = el('div', 'bubble');
+        if (m.attachments && m.attachments.length) {
+          const strip = el('div', 'att-strip');
+          for (const a of m.attachments) {
+            if (a.url) {
+              const img = el('img', 'att-img');
+              img.src = a.url; img.alt = a.name || 'imagem'; img.title = a.name || '';
+              strip.appendChild(img);
+            } else {
+              strip.appendChild(el('span', 'att-file', `${I.clip}<span>${esc(a.name || 'arquivo')}</span>`));
+            }
+          }
+          bubble.appendChild(strip);
+        }
+        if (m.text) bubble.appendChild(el('div', 'att-text')).textContent = m.text;
+        u.appendChild(bubble);
         if (m.queued) {
           // não interrompe a resposta em andamento: a mensagem fica marcada até o agente recebê-la
           u.appendChild(el('div', 'q-tag', 'na fila'));
@@ -703,6 +784,17 @@
         break;
       }
       case 'plan': renderPlan(m.plan); break;
+      case 'screenshot': {
+        hideWelcome();
+        const wrap = el('div', 'msg shot');
+        const img = el('img', 'shot-img');
+        img.src = m.url; img.alt = 'captura de tela'; img.title = m.file || 'captura de tela';
+        img.addEventListener('click', () => { vscode.postMessage({ type: 'openFile', path: m.file }); });
+        wrap.appendChild(img);
+        add(wrap);
+        scroll(true);
+        break;
+      }
       case 'usage':
         tokens = m.usage.total;
         if (m.usage.window) ctxInfo = { context: m.usage.context, window: m.usage.window };

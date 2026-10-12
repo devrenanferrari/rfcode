@@ -10,7 +10,7 @@ const { SessionManager } = require('../lib/sessions');
 const { addAllow, suggestRule } = require('../lib/permissions');
 const { remember, readUserMemory, userFile: memoryFile } = require('../lib/memory');
 const {
-  listCommands, parseCommand, expandCustom, reviewFor, PLAN_PREFIX, GO_PROMPT, INIT_PROMPT,
+  listCommands, parseCommand, expandCustom, reviewFor, PLAN_PREFIX, GO_PROMPT, INIT_PROMPT, effortCommand, parseEffort,
 } = require('../lib/commands');
 
 const { c: T, banner, MarkdownStream, Spinner, toolLine, prompt } = require('../lib/tui');
@@ -249,6 +249,8 @@ function cliHooks(state) {
       console.log(`    ${T.muted('⎿ ' + summary)}`);
     },
     onRetry(msg) { spin.stop(); console.log(`  ${T.amber('↻')} ${T.muted(msg)}`); },
+    // modo auto: mostra o modelo só quando muda (o aviso de troca por limite já sai no onRetry)
+    onModel(m) { if (m !== state.autoShown) { state.autoShown = m; spin.stop(); console.log(`  ${T.muted('auto · ' + m)}`); spin.start('pensando'); } },
     onError(msg) { spin.stop(); endText(); console.log(`\n  ${T.red('✗')} ${T.red(msg)}`); },
     onAborted() { spin.stop(); endText(); console.log(`\n  ${T.amber('■ interrompido')}`); },
     onPlan(p) {
@@ -328,7 +330,7 @@ async function handleCommand(state, cfg, line) {
     }
     case 'agendar': {
       try {
-        const r = require('../lib/commands').scheduleCommand(arg, { cwd: agent.cwd, model: agent.model, srcRoot: path.join(__dirname, '..') });
+        const r = require('../lib/commands').scheduleCommand(arg, { cwd: agent.cwd, model: agent.selectedModel, srcRoot: path.join(__dirname, '..') });
         console.log(r.text.replace(/^/gm, '  '));
         if (r.send) return { send: r.send };
       } catch (e) { console.log(c.red('  ' + e.message)); }
@@ -336,7 +338,7 @@ async function handleCommand(state, cfg, line) {
     }
     case 'missao': {
       try {
-        const r = require('../lib/commands').missionCommand(arg, { cwd: agent.cwd, model: agent.model, aliasUsed: raw, start: (m) => require('../lib/mission').startDetached(agent.cwd, m, { script: __filename }) });
+        const r = require('../lib/commands').missionCommand(arg, { cwd: agent.cwd, model: agent.selectedModel, aliasUsed: raw, start: (m) => require('../lib/mission').startDetached(agent.cwd, m, { script: __filename }) });
         console.log(r.text.replace(/^/gm, '  '));
       } catch (e) { console.log(c.red('  ' + e.message)); }
       return null;
@@ -373,10 +375,19 @@ async function handleCommand(state, cfg, line) {
         console.log(c.green('pronto.'));
       } catch (e) { console.log(c.red(e.message)); }
       return null;
-    case 'model':
-      if (arg) { agent.model = arg; cfg.model = arg; saveConfig(cfg); }
-      console.log(`Modelo: ${c.bold(agent.model)}`);
+    case 'model': {
+      const pick = arg && arg.toLowerCase() === providers.AUTO ? providers.AUTO : arg;
+      if (pick) { agent.model = pick; cfg.model = pick; saveConfig(cfg); }
+      if (agent.auto) console.log(`Modelo: ${c.bold('auto')} ${c.dim(`(agora ${agent.model}; troca sozinho no limite de pedidos e volta ao melhor quando liberar)`)}`);
+      else console.log(`Modelo: ${c.bold(agent.model)}`);
       return;
+    }
+    case 'effort': {
+      const r = effortCommand(arg, agent.effort);
+      if (r.effort) { agent.effort = r.effort; cfg.effort = r.effort; saveConfig(cfg); }
+      console.log(r.text);
+      return null;
+    }
     case 'models': {
       if (arg) {
         const id = arg.toLowerCase();
@@ -394,9 +405,10 @@ async function handleCommand(state, cfg, line) {
       for (const l of await providers.detectLocal()) {
         groups.push({ name: providers.PROVIDERS[l.provider].name, models: l.models.slice(0, 20).map((m) => ({ id: providers.formatModel(l.provider, m), desc: 'local' })) });
       }
+      console.log(`\n    ${agent.auto ? c.green('●') : ' '} ${c.bold('auto')}  ${c.dim('escolhe o melhor disponível e troca sozinho no limite de pedidos')}`);
       for (const g of groups) {
         console.log(`\n  ${T.bold(g.name)}`);
-        for (const m of g.models) console.log(`    ${m.id === agent.model ? c.green('●') : ' '} ${c.bold(m.id)}  ${c.dim(m.desc)}`);
+        for (const m of g.models) console.log(`    ${!agent.auto && m.id === agent.model ? c.green('●') : ' '} ${c.bold(m.id)}  ${c.dim(m.desc)}`);
       }
       console.log(c.dim('\n  Outros provedores: /provider. Lista completa: /models <provedor>.'));
       return null;
@@ -418,7 +430,7 @@ async function handleCommand(state, cfg, line) {
     }
     case 'doctor': {
       out(c.dim('  verificando...\n'));
-      const items = await runDoctor({ cfg: loadConfig(), model: agent.model, version: VERSION });
+      const items = await runDoctor({ cfg: loadConfig(), model: agent.selectedModel, version: VERSION });
       console.log(formatDoctor(items, { color: { ok: T.green, warn: T.amber, fail: T.red } }).replace(/^/gm, '  '));
       return null;
     }
@@ -494,7 +506,7 @@ async function main() {
     const job = sched.list().find((j) => j.id === argv[si + 1]);
     if (!job) process.exit(1);
     process.chdir(job.cwd);
-    const agent = new Agent({ apiKey: cfg.apiKey || process.env.NVIDIA_API_KEY, model: job.model || cfg.model || DEFAULT_MODEL, cwd: job.cwd, saveSession: true });
+    const agent = new Agent({ apiKey: cfg.apiKey || process.env.NVIDIA_API_KEY, model: job.model || cfg.model || DEFAULT_MODEL, effort: cfg.effort, cwd: job.cwd, saveSession: true });
     agent.autoApprove = true;
     agent.interactive = false;
     let text = '', failed = '';
@@ -524,7 +536,7 @@ async function main() {
     const stamp = () => new Date().toLocaleTimeString('pt-BR');
     const m = await mission.run(process.cwd(), argv[ri + 1], {
       log: (t) => console.log(`[${stamp()}] ${t}`),
-      createAgent: ({ model }) => new Agent({ apiKey: cfg.apiKey || process.env.NVIDIA_API_KEY, model: model || cfg.model || DEFAULT_MODEL, cwd: process.cwd(), saveSession: true }),
+      createAgent: ({ model }) => new Agent({ apiKey: cfg.apiKey || process.env.NVIDIA_API_KEY, model: model || cfg.model || DEFAULT_MODEL, effort: cfg.effort, cwd: process.cwd(), saveSession: true }),
     });
     console.log(`[${stamp()}] fim: ${m.status}`);
     process.exit(0);
@@ -540,7 +552,7 @@ async function main() {
       const objetivo = argv.slice(1).filter((a) => a !== '--primeiro-plano').join(' ');
       let horas = 24; const o = objetivo.replace(/--horas[= ](\d+(?:[.,]\d+)?)/, (x, h) => { horas = Number(h.replace(',', '.')); return ''; }).trim();
       const m = mission.create(process.cwd(), { objetivo: o, horas, modelo: model });
-      const done = await mission.run(process.cwd(), m.id, { createAgent: ({ model: mm }) => new Agent({ apiKey: cfg.apiKey || process.env.NVIDIA_API_KEY, model: mm || model || DEFAULT_MODEL, cwd: process.cwd(), saveSession: true }) });
+      const done = await mission.run(process.cwd(), m.id, { createAgent: ({ model: mm }) => new Agent({ apiKey: cfg.apiKey || process.env.NVIDIA_API_KEY, model: mm || model || DEFAULT_MODEL, effort: cfg.effort, cwd: process.cwd(), saveSession: true }) });
       console.log(require('../lib/mission').status(process.cwd(), done.id));
       process.exit(done.status === 'concluida' ? 0 : 1);
     }
@@ -566,6 +578,8 @@ Uso:
   rfcode -c, --continue    retoma a última conversa desta pasta
   rfcode --key             configura uma nova API key da NVIDIA
   rfcode --model <id>      usa outro modelo (ex.: groq:llama-3.3-70b-versatile, ollama:qwen3:8b)
+                           auto: escolhe o melhor disponível e troca sozinho no limite de pedidos
+  rfcode --effort <nível>  baixo (rápido), medio (padrão) ou alto (mais cuidadoso)
   rfcode --doctor          verifica o ambiente, as chaves e as ferramentas
 
 Provedores: NVIDIA (padrão), OpenRouter, Groq, OpenAI, Anthropic, Gemini, DeepSeek, Mistral,
@@ -600,13 +614,20 @@ API key: ${CONFIG_FILE} ou variável de ambiente NVIDIA_API_KEY`);
   let model = cfg.model || DEFAULT_MODEL;
   const mi = argv.indexOf('--model');
   if (mi >= 0 && argv[mi + 1]) { model = argv[mi + 1]; argv.splice(mi, 2); }
+  if (model.toLowerCase() === providers.AUTO) model = providers.AUTO;
+  let effort = cfg.effort || 'medium';
+  const ei = argv.indexOf('--effort');
+  if (ei >= 0 && argv[ei + 1]) { effort = parseEffort(argv[ei + 1]) || effort; argv.splice(ei, 2); }
 
   if (!argv.includes('-p')) out(banner({ version: VERSION, model, cwd: process.cwd(), memory: !!readUserMemory() }));
 
   let apiKey = cfg.apiKey || process.env.NVIDIA_API_KEY;
   const ki = argv.indexOf('--key');
   if (ki >= 0) argv.splice(ki, 1);
-  const { provider } = providers.parseModel(model);
+  // modo auto usa qualquer provedor com chave; só pede a da NVIDIA quando não há nenhum
+  const provider = model === providers.AUTO
+    ? (apiKey || providers.configuredProviders(cfg).length ? null : 'nvidia')
+    : providers.parseModel(model).provider;
   // a chave da NVIDIA só é pedida quando o modelo é da NVIDIA; outros provedores usam /provider
   // primeira execução: nenhum provedor configurado. Oferece os gratuitos em vez de exigir a chave da NVIDIA.
   const nothingConfigured = !apiKey && !providers.configuredProviders(cfg).length && ki < 0 && !argv.includes('-p');
@@ -622,11 +643,11 @@ API key: ${CONFIG_FILE} ou variável de ambiente NVIDIA_API_KEY`);
       Object.assign(cfg, loadConfig());
     } else apiKey = await askApiKey(cfg);
   } else if (provider === 'nvidia' && (!apiKey || ki >= 0)) apiKey = await askApiKey(cfg);
-  else if (provider !== 'nvidia' && providers.PROVIDERS[provider].needsKey !== false && !providers.keyFor(provider, cfg)) {
+  else if (provider && provider !== 'nvidia' && providers.PROVIDERS[provider].needsKey !== false && !providers.keyFor(provider, cfg)) {
     console.log(`  ${T.amber('!')} ${T.muted(`falta a API key de ${providers.PROVIDERS[provider].name}: use /provider ${provider}`)}`);
   }
 
-  const state = { agent: new Agent({ apiKey, model, cwd: process.cwd(), saveSession: true }), showThinking: false };
+  const state = { agent: new Agent({ apiKey, model, effort, cwd: process.cwd(), saveSession: true }), showThinking: false };
   liveAgent = state.agent;
   const hooks = cliHooks(state);
   // depois de cada resposta, mensagens que ficaram na fila (ex.: depois de Ctrl+C) viram o próximo pedido

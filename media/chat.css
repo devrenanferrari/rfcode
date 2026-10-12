@@ -276,6 +276,34 @@ body:not(.busy) .plan .ring { animation: none; }
 }
 .composer textarea::placeholder { color: var(--vscode-input-placeholderForeground); }
 .composer-bar { display: flex; align-items: center; gap: 8px; padding: 4px 6px 6px 10px; }
+
+/* anexos: chips acima do campo e imagens na conversa */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px 0; }
+.chips.hidden { display: none; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 220px;
+  padding: 3px 6px 3px 4px; border-radius: 8px; font-size: 0.85em;
+  background: var(--rf-surface-2); border: 1px solid var(--rf-line);
+}
+.chip img { width: 26px; height: 26px; object-fit: cover; border-radius: 5px; }
+.chip .chip-ic { display: grid; place-items: center; width: 26px; height: 26px; color: var(--rf-muted); }
+.chip .chip-ic svg { width: 14px; height: 14px; }
+.chip .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip .chip-x { display: grid; place-items: center; padding: 2px; border-radius: 5px; color: var(--rf-muted); }
+.chip .chip-x:hover { background: var(--rf-surface); color: var(--vscode-foreground); }
+.chip .chip-x svg { width: 11px; height: 11px; }
+#attach { flex: none; }
+.att-strip { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.att-strip:only-child { margin-bottom: 0; }
+.att-img { max-width: 220px; max-height: 160px; border-radius: 8px; display: block; cursor: zoom-in; }
+.att-file {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 7px;
+  background: var(--rf-surface-2); border: 1px solid var(--rf-line); font-size: 0.85em;
+}
+.att-file svg { width: 12px; height: 12px; color: var(--rf-muted); }
+.att-text { white-space: pre-wrap; }
+.msg.shot { display: flex; justify-content: flex-start; margin: 4px 0; }
+.shot-img { max-width: 100%; max-height: 320px; border-radius: 8px; border: 1px solid var(--rf-line); display: block; cursor: zoom-in; }
 #status { flex: 1; text-align: right; color: var(--rf-muted); font-size: 0.85em; font-family: var(--rf-mono); white-space: nowrap; overflow: hidden; }
 
 .switch { position: relative; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.88em; color: var(--rf-muted); user-select: none; }
@@ -292,6 +320,17 @@ body:not(.busy) .plan .ring { animation: none; }
 .switch input:checked + .track::after { transform: translateX(10px); background: var(--rf-on-accent); }
 .switch input:checked ~ .lbl { color: var(--rf-accent-strong); }
 .switch input:focus-visible + .track { outline: 1px solid var(--vscode-focusBorder); outline-offset: 2px; }
+
+.effort { display: inline-flex; align-items: center; gap: 3px; color: var(--rf-muted); font-size: 0.88em; cursor: pointer; flex: none; }
+.effort svg { flex: none; }
+.effort select {
+  appearance: none; -webkit-appearance: none; background: transparent; color: inherit; border: none; font: inherit;
+  padding: 1px 2px; border-radius: 5px; cursor: pointer;
+}
+.effort select:hover { color: var(--vscode-foreground); }
+.effort select:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
+.effort select option { background: var(--vscode-dropdown-background); color: var(--vscode-dropdown-foreground); }
+.effort.high { color: var(--rf-accent-strong); }
 
 .round {
   width: 28px; height: 28px; padding: 0; border-radius: 8px; display: grid; place-items: center; flex: none;

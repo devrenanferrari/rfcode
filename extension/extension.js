@@ -112,7 +112,7 @@ class ChatViewProvider {
   async setApiKey() { await this.getApiKey(true); }
 
   ensureAgent(apiKey = '') {
-    if (!this.agent) this.agent = new Agent({ apiKey, model: settings().get('model') || DEFAULT_MODEL, cwd: workspaceCwd(), saveSession: true, extraTools: VSCODE_TOOLS });
+    if (!this.agent) this.agent = new Agent({ apiKey, model: settings().get('model') || DEFAULT_MODEL, effort: settings().get('effort'), cwd: workspaceCwd(), saveSession: true, extraTools: VSCODE_TOOLS });
     return this.agent;
   }
 
@@ -132,7 +132,7 @@ class ChatViewProvider {
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource}; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="${uri('chat.css')}">
 <title>rfcode</title>
@@ -161,18 +161,21 @@ class ChatViewProvider {
     for (const l of local) {
       for (const m of l.models.slice(0, 30)) list.push({ id: providers.formatModel(l.provider, m), desc: 'local', group: providers.PROVIDERS[l.provider].name });
     }
-    if (!list.some((m) => m.id === model)) list.unshift({ id: model, desc: 'atual', group: 'Atual' });
+    if (model !== providers.AUTO && !list.some((m) => m.id === model)) list.unshift({ id: model, desc: 'atual', group: 'Atual' });
+    list.unshift({ id: providers.AUTO, desc: 'escolhe o melhor disponível e troca sozinho no limite de pedidos', group: 'Automático' });
     return list;
   }
 
   async initMessage() {
     const cfg = loadConfig();
-    const model = this.agent?.model || settings().get('model') || DEFAULT_MODEL;
+    const model = this.agent?.selectedModel || settings().get('model') || DEFAULT_MODEL;
     const { provider } = providers.parseModel(model);
     const nv = (await this.context.secrets.get(SECRET_KEY)) || cfg.apiKey;
-    const hasKey = provider === 'nvidia' ? !!nv : providers.PROVIDERS[provider].needsKey === false || !!providers.keyFor(provider, cfg);
+    const hasKey = model === providers.AUTO ? !!nv || providers.configuredProviders(cfg).length > 0
+      : provider === 'nvidia' ? !!nv : providers.PROVIDERS[provider].needsKey === false || !!providers.keyFor(provider, cfg);
     return {
       type: 'init', model, models: await this.modelList(model), cwd: workspaceCwd(), hasKey,
+      effort: this.agent?.effort || settings().get('effort') || 'medium',
       autoApprove: this.agent ? this.agent.autoApprove : settings().get('autoApprove') || false,
       commands: listCommands(workspaceCwd(), 'ui'),
       mode: this.agent?.planOnly ? 'plan' : '',
@@ -186,7 +189,7 @@ class ChatViewProvider {
     providers.detectLocal().then(async (local) => {
       this.localModels = local;
       if (local.length) {
-        const model = this.agent?.model || settings().get('model') || DEFAULT_MODEL;
+        const model = this.agent?.selectedModel || settings().get('model') || DEFAULT_MODEL;
         this.post({ type: 'models', model, models: await this.modelList(model, local) });
       }
     }).catch(() => {});
@@ -218,13 +221,14 @@ class ChatViewProvider {
       case 'discardResume':
         if (this.agent && !this.agent.busy) { this.agent.repairHistory(); this.agent.sessionManager.save(this.agent.messages, 'done'); }
         return undefined;
-      case 'send': return this.send(m.text);
+      case 'send': return this.send(m.text, undefined, m.attachments);
       case 'command': return this.runCommand(m.name, m.args || '');
       case 'stop': return this.stop();
       case 'newChat': return this.newChat();
       case 'setKey': return from === 'local' ? this.setApiKey() : undefined;
       case 'setModel': return this.setModel(m.model);
       case 'setAuto': return this.setAuto(!!m.value);
+      case 'setEffort': return this.setEffort(m.effort);
       case 'approval': {
         const p = this.pending.get(m.id);
         if (m.decision === 'rule') {
@@ -266,6 +270,10 @@ class ChatViewProvider {
       case 'openFile': {
         if (from !== 'local') return undefined;
         const full = path.resolve(this.agent ? this.agent.cwd : workspaceCwd(), m.path);
+        // imagens abrem com o visualizador padrão do Windows (não como texto)
+        if (/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(full)) {
+          return vscode.env.openExternal(vscode.Uri.file(full));
+        }
         const doc = await vscode.workspace.openTextDocument(full);
         return vscode.window.showTextDocument(doc, { preview: true });
       }
@@ -278,6 +286,13 @@ class ChatViewProvider {
     await settings().update('model', model, vscode.ConfigurationTarget.Global);
     if (this.agent) this.agent.model = model;
     this.post({ type: 'modelChanged', model });
+  }
+
+  async setEffort(effort) {
+    if (!providers.EFFORTS.includes(effort)) return;
+    await settings().update('effort', effort, vscode.ConfigurationTarget.Global);
+    if (this.agent) this.agent.effort = effort;
+    this.post({ type: 'effortChanged', effort });
   }
 
   async setAuto(value) {
@@ -293,9 +308,20 @@ class ChatViewProvider {
     switch (name) {
       case 'new': return this.newChat();
       case 'history': return this.sendHistory();
-      case 'model':
-        if (args) { await this.setModel(args); return info(`Modelo: ${args}`); }
-        return info(`Modelo atual: ${agent?.model || settings().get('model') || DEFAULT_MODEL}. Use /model <id> para trocar.`);
+      case 'model': {
+        if (args) {
+          const pick = args.toLowerCase() === providers.AUTO ? providers.AUTO : args;
+          await this.setModel(pick);
+          return info(pick === providers.AUTO ? 'Modelo: auto. O rfcode escolhe o melhor disponível e troca sozinho quando um atinge o limite de pedidos.' : `Modelo: ${pick}`);
+        }
+        const sel = agent?.selectedModel || settings().get('model') || DEFAULT_MODEL;
+        return info(sel === providers.AUTO ? `Modelo atual: auto${agent ? ` (agora ${agent.model})` : ''}. Use /model <id> para fixar um modelo.` : `Modelo atual: ${sel}. Use /model <id> para trocar (ou /model auto).`);
+      }
+      case 'effort': {
+        const r = require('../lib/commands').effortCommand(args, agent?.effort || settings().get('effort') || 'medium');
+        if (r.effort) await this.setEffort(r.effort);
+        return info(r.text);
+      }
       case 'auto': {
         const v = !(agent ? agent.autoApprove : settings().get('autoApprove'));
         await this.setAuto(v);
@@ -322,7 +348,7 @@ class ChatViewProvider {
       }
       case 'agendar': {
         try {
-          const r = require('../lib/commands').scheduleCommand(args, { cwd: workspaceCwd(), model: agent?.model || settings().get('model'), srcRoot: this.context.extensionPath });
+          const r = require('../lib/commands').scheduleCommand(args, { cwd: workspaceCwd(), model: agent?.selectedModel || settings().get('model'), srcRoot: this.context.extensionPath });
           info(r.text);
           if (r.send) return this.send(r.send, '/agendamento rodar');
           return;
@@ -333,7 +359,7 @@ class ChatViewProvider {
           const script = path.join(this.context.extensionPath, 'bin', 'rfcode.js');
           // dentro do VS Code o executável é o Electron: ELECTRON_RUN_AS_NODE faz ele rodar como Node
           const start = (m) => require('../lib/mission').startDetached(workspaceCwd(), m, { script, env: { ELECTRON_RUN_AS_NODE: '1' } });
-          return info(require('../lib/commands').missionCommand(args, { cwd: workspaceCwd(), start, model: agent?.model || settings().get('model') }).text);
+          return info(require('../lib/commands').missionCommand(args, { cwd: workspaceCwd(), start, model: agent?.selectedModel || settings().get('model') }).text);
         } catch (e) { return this.post({ type: 'error', text: e.message }); }
       }
       case 'entender': return this.send(require('../lib/commands').UNDERSTAND_PROMPT(args), `/entender${args ? ' ' + args : ''}`);
@@ -387,13 +413,13 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
           return info(list.length ? `Modelos em ${providers.PROVIDERS[id].name} (${list.length}):\n${list.slice(0, 60).map((m) => '  ' + providers.formatModel(id, m)).join('\n')}${list.length > 60 ? '\n  ...' : ''}\nUse /model <id> para escolher.`
             : `Não consegui listar os modelos de ${providers.PROVIDERS[id].name}. Configure com /provider ${id}.`);
         }
-        const model = agent?.model || settings().get('model') || DEFAULT_MODEL;
+        const model = agent?.selectedModel || settings().get('model') || DEFAULT_MODEL;
         const list = await this.modelList(model);
         return info(`Modelos disponíveis:\n${list.map((m) => `  ${m.id}${m.desc ? '  (' + m.desc + ')' : ''}`).join('\n')}\nOutros provedores: /provider. Lista completa de um provedor: /models <provedor>.`);
       }
       case 'doctor': {
         info('Verificando o ambiente...');
-        const items = await runDoctor({ cfg: loadConfig(), model: agent?.model || settings().get('model'), version: VERSION });
+        const items = await runDoctor({ cfg: loadConfig(), model: agent?.selectedModel || settings().get('model'), version: VERSION });
         return info(formatDoctor(items));
       }
       default: {
@@ -506,15 +532,44 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
     await vscode.commands.executeCommand('vscode.diff', left, right, `${name}: atual ↔ proposta do rfcode`, { preview: true });
   }
 
+  // Anexos vindos do painel (base64): imagens ficam em memória para o modelo; tudo vai para
+  // ~/.rfcode/attachments/<sessão>/ para o agente poder abrir depois (read_file, visão, etc.).
+  saveAttachments(list) {
+    const out = [];
+    for (const a of (Array.isArray(list) ? list : []).slice(0, 5)) {
+      const data = String(a?.data || '');
+      if (!data) continue;
+      let buf;
+      try { buf = Buffer.from(data, 'base64'); } catch { continue; }
+      if (!buf.length || buf.length > 6 * 1024 * 1024) continue;
+      const mime = String(a.mime || 'application/octet-stream');
+      const name = String(a.name || 'anexo').replace(/[\\/:*?"<>|]/g, '_').slice(-80) || 'anexo';
+      const dir = path.join(os.homedir(), '.rfcode', 'attachments', this.agent?.sessionManager?.id || 'sem-sessao');
+      let file = '';
+      try {
+        fs.mkdirSync(dir, { recursive: true });
+        file = path.join(dir, `${Date.now()}-${crypto.randomBytes(3).toString('hex')}-${name}`);
+        fs.writeFileSync(file, buf);
+      } catch { file = ''; }
+      out.push({ name, mime, data, file });
+    }
+    return out;
+  }
+
   // display: o que aparece como mensagem do usuário (ex.: "/review" em vez do prompt inteiro com o diff)
-  async send(text, display) {
-    if (!text || !text.trim()) return;
+  async send(text, display, attachments) {
+    if (!text || !String(text).trim()) {
+      if (!attachments || !attachments.length) return;
+      text = '';
+    }
+    const atts = this.saveAttachments(attachments);
     const nvKey = (await this.context.secrets.get(SECRET_KEY)) || loadConfig().apiKey || '';
     const agent = this.ensureAgent(nvKey);
     // durante o trabalho: a mensagem entra na fila e o agente a considera no próximo passo
     if (agent.busy) {
-      agent.queue(text);
-      this.post({ type: 'user', text: display || text, queued: true });
+      agent.queue(text, atts);
+      this.post({ type: 'user', text: display || text, queued: true, attachments: this.attachmentsForView(atts) });
+      if (this.remote?.running && atts.length) this.remote.broadcast({ type: 'user', text: display || text, queued: true, attachments: this.attachmentsForRemote(atts) });
       return;
     }
     const model = settings().get('model') || DEFAULT_MODEL;
@@ -526,11 +581,53 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
     agent.apiKey = (await this.context.secrets.get(SECRET_KEY)) || loadConfig().apiKey || '';
     agent.cwd = workspaceCwd();
     agent.model = model;
+    agent.effort = settings().get('effort') || agent.effort;
     agent.autoApprove = settings().get('autoApprove') || agent.autoApprove;
 
-    this.post({ type: 'user', text: display || text });
-    await agent.send(text, this.agentHooks());
+    this.post({ type: 'user', text: display || text, attachments: this.attachmentsForView(atts) });
+    if (this.remote?.running && atts.length) this.remote.broadcast({ type: 'user', text: display || text, attachments: this.attachmentsForRemote(atts) });
+    await agent.send(text, this.agentHooks(), { attachments: atts });
     await this.drainQueue();
+  }
+
+  // O que a interface precisa para desenhar a mensagem: imagens viram data URL, arquivos viram nome.
+  attachmentsForView(atts) {
+    return (atts || []).map((a) => (a.mime || '').startsWith('image/')
+      ? { name: a.name, url: `data:${a.mime};base64,${a.data}` }
+      : { name: a.name });
+  }
+
+  // Screenshot do agente (ferramenta screenshot): aparece como imagem na conversa.
+  showScreenshot(file) {
+    try {
+      const buf = fs.readFileSync(file);
+      const url = `data:image/png;base64,${buf.toString('base64')}`;
+      this.post({ type: 'screenshot', url, file });
+      if (this.remote?.running) {
+        // no celular: copia para a pasta de anexos e serve por HTTP (data URL pesada demais pelo SSE)
+        try {
+          const dir = path.join(os.homedir(), '.rfcode', 'attachments', this.agent?.sessionManager?.id || 'sem-sessao');
+          fs.mkdirSync(dir, { recursive: true });
+          const copy = path.join(dir, `shot-${Date.now()}-${crypto.randomBytes(3).toString('hex')}.png`);
+          fs.copyFileSync(file, copy);
+          this.remote.broadcast({ type: 'screenshot', url: `/att/${encodeURIComponent(path.relative(path.join(os.homedir(), '.rfcode', 'attachments'), copy).replace(/\\/g, '/'))}?t=${this.remote.token}`, file });
+        } catch {
+          this.remote.broadcast({ type: 'screenshot', url, file });
+        }
+      }
+    } catch (e) {
+      this.post({ type: 'info', text: `Screenshot salvo em ${file}` });
+    }
+  }
+
+  // No celular, data URLs pesadas passam pelo SSE; melhor servir o arquivo salvo por HTTP.
+  attachmentsForRemote(atts) {
+    const base = path.join(os.homedir(), '.rfcode', 'attachments');
+    return (atts || []).map((a) => {
+      if (!(a.mime || '').startsWith('image/')) return { name: a.name };
+      if (a.file && a.file.startsWith(base)) return { name: a.name, url: `/att/${encodeURIComponent(path.relative(base, a.file).replace(/\\/g, '/'))}?t=${this.remote.token}` };
+      return { name: a.name, url: `data:${a.mime};base64,${a.data}` };
+    });
   }
 
   // Mensagens que ficaram na fila quando a resposta parou (ex.: o usuário clicou em Parar): viram o próximo pedido.
@@ -540,7 +637,9 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
     if (!left.length || agent.busy) return;
     this.post({ type: 'queued', count: left.length });
     this.post({ type: 'thinking' });
-    await agent.send(left.join('\n\n'), this.agentHooks());
+    const texts = [], atts = [];
+    for (const item of left) { texts.push(item.text); atts.push(...(item.attachments || [])); }
+    await agent.send(texts.join('\n\n'), this.agentHooks(), { attachments: atts });
     await this.drainQueue();
   }
 
@@ -548,7 +647,7 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
   async resume() {
     const agent = this.agent;
     if (!agent || agent.busy || !agent.interrupted) return;
-    if (!(await this.ensureProvider(agent.model))) return;
+    if (!(await this.ensureProvider(agent.selectedModel))) return;
     agent.apiKey = (await this.context.secrets.get(SECRET_KEY)) || loadConfig().apiKey || '';
     this.post({ type: 'resuming' });
     await agent.resume(this.agentHooks());
@@ -557,7 +656,9 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
 
   // O provedor do modelo está pronto? Se faltar a chave, pede (sem trocar o modelo escolhido).
   async ensureProvider(model) {
-    const { provider } = providers.parseModel(model);
+    // modo auto: basta um provedor com chave; sem nenhum, pede a da NVIDIA
+    if (model === providers.AUTO && providers.configuredProviders(loadConfig()).length) return true;
+    const { provider } = providers.parseModel(model === providers.AUTO ? DEFAULT_MODEL : model);
     if (provider === 'nvidia') return !!(await this.getApiKey());
     const p = providers.PROVIDERS[provider];
     const cfg = loadConfig();
@@ -698,8 +799,10 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
       }),
       onCommandOutput: (t) => this.post({ type: 'cmdOut', text: t }),
       onToolResult: (r) => this.post({ type: 'toolResult', ...r }),
+      onScreenshot: (file) => this.showScreenshot(file),
       onPlan: (plan) => this.post({ type: 'plan', plan }),
       onUsage: (usage) => this.post({ type: 'usage', usage }),
+      onModel: (model) => this.post({ type: 'modelInUse', model }),
       approve: (info) => new Promise((resolve) => {
         this.pending.set(info.id, resolve);
         const diff = ['write_file', 'edit_file', 'multi_edit'].includes(info.name);

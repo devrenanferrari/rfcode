@@ -2,7 +2,7 @@
   "name": "rfcode",
   "displayName": "rfcode",
   "description": "Agente de IA para VS Code com os modelos gratuitos de build.nvidia.com. Edita código, executa testes, pesquisa na web, gera documentos e vídeos e automatiza tarefas no Windows.",
-  "version": "1.14.2",
+  "version": "1.16.0",
   "publisher": "renanferrari",
   "license": "MIT",
   "repository": {
@@ -177,7 +177,14 @@
         "rfcode.model": {
           "type": "string",
           "default": "nvidia/nemotron-3-super-120b-a12b",
-          "description": "Modelo usado pelo agente. Para outros provedores, use o prefixo do provedor (ex.: groq:llama-3.3-70b-versatile, ollama:qwen3:8b). O modelo precisa suportar chamadas de ferramenta."
+          "description": "Modelo usado pelo agente. \"auto\" usa sempre o modelo mais forte disponível entre os provedores configurados e troca sozinho quando um atinge o limite de pedidos. Para outros provedores, use o prefixo do provedor (ex.: groq:llama-3.3-70b-versatile, ollama:qwen3:8b). O modelo precisa suportar chamadas de ferramenta."
+        },
+        "rfcode.effort": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "enumDescriptions": ["Baixo: respostas rápidas, investiga só o necessário", "Médio: o padrão", "Alto: entende tudo antes de mudar e verifica com testes e revisão do diff (mais lento)"],
+          "default": "medium",
+          "description": "Esforço do agente: quanto ele investiga e verifica antes de concluir. Nos modelos que aceitam, também controla o raciocínio (reasoning_effort)."
         },
         "rfcode.autoApprove": {
           "type": "boolean",
@@ -214,5 +221,8 @@
   "galleryBanner": {
     "color": "#0F1115",
     "theme": "dark"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^4.0.0"
   }
 }
