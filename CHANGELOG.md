@@ -1,12 +1,16 @@
 # Changelog
 
+## 1.17.1
+
+- Sem limite de passos: o agente (e os subagentes) seguem até terminar a tarefa, em vez de parar em 100 ações. A única trava é para quando o modelo empaca repetindo exatamente a mesma ação 6 vezes. `--max-steps` continua disponível para quem quiser um teto, e as missões seguem trabalhando em ciclos.
+- O pacote da extensão não inclui mais arquivos soltos da raiz do projeto.
+
 ## 1.17.0
 
 - Primeira vez no painel: em vez do chat vazio, o rfcode abre um passo a passo para criar a chave gratuita da NVIDIA (com links direto para build.nvidia.com e para a página de API Keys) e um campo para colar a chave, que é validada ali mesmo. Chave errada mostra o motivo sem sair da tela.
 - Na mesma tela: outros provedores (Groq, Gemini, OpenRouter, GitHub Models, OpenAI, Anthropic, Ollama), cada um com o link para obter a chave, e as chaves opcionais das ferramentas (pesquisa na web, GitHub, conectores).
 - `/chaves` (painel e terminal): mostra o que já está configurado e onde conseguir cada chave. A chave da pesquisa na web (Brave) pode ser colada por ali.
 - No terminal, o primeiro uso também mostra os passos para obter a chave da NVIDIA.
-- Sem limite de passos: o agente (e os subagentes) seguem até terminar a tarefa, em vez de parar em 100 ações. A única trava é para quando o modelo empaca repetindo exatamente a mesma ação 6 vezes. `--max-steps` continua disponível para quem quiser um teto, e as missões seguem trabalhando em ciclos.
 
 ## 1.16.0
 
