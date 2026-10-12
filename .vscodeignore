@@ -14,3 +14,11 @@ exemplos/**
 .rfcode/**
 .claude/**
 .github/**
+# arquivos soltos na raiz (saídas de testes manuais) não entram no pacote
+*.json
+!package.json
+*.xlsx
+*.docx
+*.pptx
+*.csv
+~$*

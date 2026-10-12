@@ -6,6 +6,7 @@
 - Na mesma tela: outros provedores (Groq, Gemini, OpenRouter, GitHub Models, OpenAI, Anthropic, Ollama), cada um com o link para obter a chave, e as chaves opcionais das ferramentas (pesquisa na web, GitHub, conectores).
 - `/chaves` (painel e terminal): mostra o que já está configurado e onde conseguir cada chave. A chave da pesquisa na web (Brave) pode ser colada por ali.
 - No terminal, o primeiro uso também mostra os passos para obter a chave da NVIDIA.
+- Sem limite de passos: o agente (e os subagentes) seguem até terminar a tarefa, em vez de parar em 100 ações. A única trava é para quando o modelo empaca repetindo exatamente a mesma ação 6 vezes. `--max-steps` continua disponível para quem quiser um teto, e as missões seguem trabalhando em ciclos.
 
 ## 1.16.0
 

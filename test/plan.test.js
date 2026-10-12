@@ -72,6 +72,31 @@ test('maxSteps limita o loop', async () => {
   assert.match(err, /Limite de 2 passos/);
 });
 
+test('sem limite de passos por padrão: passa de 100 ações e termina sozinho', async () => {
+  let n = 0;
+  const text = (t) => sse([{ choices: [{ delta: { content: t } }] }]);
+  global.fetch = async (url, opts) => {
+    // pedidos sem ferramentas são o resumo da compactação de contexto, não passos do agente
+    if (!JSON.parse(opts.body).tools) return text('resumo');
+    return ++n <= 130 ? sse(toolCall('list_dir', { path: '.', n })) : text('fim');
+  };
+  const a = new Agent({ apiKey: 'x', cwd: os.tmpdir(), planReminderEvery: 0 });
+  let err = '', calls = 0;
+  await a.send('tarefa longa', { onError: (m) => { err = m; }, onToolCall: () => { calls++; } });
+  assert.strictEqual(err, '');
+  assert.strictEqual(calls, 130);
+  assert.strictEqual(n, 131, 'chegou à resposta final');
+});
+
+test('para quando o modelo repete a mesma ação sem avançar', async () => {
+  global.fetch = async () => sse(toolCall('list_dir', { path: '.' }));
+  const a = new Agent({ apiKey: 'x', cwd: os.tmpdir(), planReminderEvery: 0 });
+  let err = '';
+  await a.send('loop', { onError: (m) => { err = m; } });
+  assert.match(err, /repetiu a mesma ação \(list_dir\) 6 vezes/);
+  assert.strictEqual(a.messages.filter((m) => m.role === 'tool').length, 6);
+});
+
 test('lembrete de plano aparece depois de N ações sem update_plan', async () => {
   const queue = [
     sse(toolCall('update_plan', { goal: 'g', steps: [{ text: 'a', status: 'in_progress' }, { text: 'b', status: 'pending' }] })),
