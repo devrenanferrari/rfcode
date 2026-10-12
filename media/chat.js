@@ -71,6 +71,7 @@
     bug: svg('<ellipse cx="8" cy="9.5" rx="3.5" ry="4.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 5.3v8.4M4.5 8H1.8M14.2 8h-2.7M4.7 11.5l-2.2 1.3M11.3 11.5l2.2 1.3M5.6 3.3L6.6 5M10.4 3.3L9.4 5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>'),
     flask: svg('<path d="M6 1.8h4M6.7 1.8v4.4L2.6 12.8a1 1 0 00.9 1.5h9a1 1 0 00.9-1.5L9.3 6.2V1.8M4.3 10h7.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>'),
     branch: svg('<circle cx="4.5" cy="3.5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="4.5" cy="12.5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="11.5" cy="5.5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 5.1v5.8M11.5 7.1c0 2.4-2.2 3-5.4 4.2" fill="none" stroke="currentColor" stroke-width="1.3"/>'),
+    ext: svg('<path d="M9 2.5h4.5V7M13.5 2.5L7.5 8.5M11.5 9.5v3a1 1 0 01-1 1h-7a1 1 0 01-1-1v-7a1 1 0 011-1h3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>'),
     clip: svg('<path d="M10.5 3.5L4.8 9.2a2.6 2.6 0 003.7 3.7l6-6a1.7 1.7 0 00-2.4-2.4l-5.6 5.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>'),
   };
 
@@ -155,12 +156,103 @@
   }
 
   // ---------- boas-vindas ----------
+  // Primeira vez (nenhum modelo configurado): passo a passo para obter e colar a chave.
+  const openUrl = (url) => vscode.postMessage({ type: 'openUrl', url });
+  function linkBtn(url, label) {
+    return url ? `<button class="link" type="button" data-url="${esc(url)}">${esc(label || url.replace(/^https:\/\//, ''))} ${I.ext}</button>` : '';
+  }
+  function bindLinks(root) {
+    root.querySelectorAll('[data-url]').forEach((b) => b.addEventListener('click', () => openUrl(b.dataset.url)));
+  }
+  function toolsList(k) {
+    return k.tools.map((t) => `
+      <li class="kitem">
+        <span class="kdot ${t.ready ? 'on' : ''}" title="${t.ready ? 'configurado' : 'não configurado'}"></span>
+        <div><b>${esc(t.name)}</b>${t.ready ? '<span class="kok">configurado</span>' : ''}
+          <small>${esc(t.why)}</small><small>${esc(t.steps)}</small>
+          <div class="kact">${linkBtn(t.url, 'Abrir site')}${t.canPaste ? `<button class="link" type="button" data-tool="${esc(t.id)}">${I.key} ${t.ready ? 'Trocar chave' : 'Colar chave'}</button>` : ''}</div>
+        </div>
+      </li>`).join('');
+  }
+  function providerList(k, skipNvidia) {
+    return k.providers.filter((p) => !(skipNvidia && p.id === 'nvidia')).map((p) => `
+      <li class="kitem">
+        <span class="kdot ${p.ready ? 'on' : ''}"></span>
+        <div><b>${esc(p.name)}</b>${p.free ? '<span class="kfree">grátis</span>' : ''}${p.ready ? '<span class="kok">configurado</span>' : ''}
+          ${p.note ? `<small>${esc(p.note)}</small>` : ''}
+          <div class="kact">${linkBtn(p.url, 'Obter chave')}<button class="link" type="button" data-provider="${esc(p.id)}">${p.local ? 'Usar' : p.ready ? 'Trocar chave' : 'Colar chave'}</button></div>
+        </div>
+      </li>`).join('');
+  }
+  function bindKeyActions(root) {
+    bindLinks(root);
+    root.querySelectorAll('[data-tool]').forEach((b) => b.addEventListener('click', () => vscode.postMessage({ type: 'saveToolKey', id: b.dataset.tool })));
+    root.querySelectorAll('[data-provider]').forEach((b) => b.addEventListener('click', () =>
+      vscode.postMessage(b.dataset.provider === 'nvidia' ? { type: 'setKey' } : { type: 'setupProvider', id: b.dataset.provider })));
+  }
+  function onboarding() {
+    const k = state.keys || { providers: [], tools: [], nvidiaSteps: [] };
+    const w = el('div', 'welcome onboard');
+    w.innerHTML = `
+      <img class="logo" src="${LOGO}" alt="">
+      <h1>Bem-vindo ao rfcode</h1>
+      <p class="tag">Para começar, conecte um modelo de IA. A NVIDIA oferece modelos gratuitos e a chave leva uns dois minutos para sair.</p>
+      <ol class="steps">${k.nvidiaSteps.map((s, i) => `
+        <li><span class="num">${i + 1}</span><div><span>${esc(s.text)}</span>${s.url ? `<div class="kact">${linkBtn(s.url)}</div>` : ''}</div></li>`).join('')}
+      </ol>
+      <form class="keyform" autocomplete="off">
+        <input type="password" id="keyInput" placeholder="Cole aqui a chave (nvapi-...)" aria-label="API key da NVIDIA" spellcheck="false">
+        <button class="primary" type="submit" id="keySave">Conectar</button>
+      </form>
+      <div class="keymsg hidden" id="keyMsg" role="status"></div>
+      <details class="kmore">
+        <summary>Usar outro provedor</summary>
+        <p class="hint">Qualquer um destes serve no lugar da NVIDIA. Os marcados como grátis têm uso gratuito com limite.</p>
+        <ul class="klist">${providerList(k, true)}</ul>
+      </details>
+      <details class="kmore">
+        <summary>Chaves das ferramentas (opcional)</summary>
+        <p class="hint">Nada aqui é obrigatório. Dá para configurar depois com <code>/chaves</code>.</p>
+        <ul class="klist">${toolsList(k)}</ul>
+      </details>`;
+    bindKeyActions(w);
+    const form = w.querySelector('.keyform'), keyIn = w.querySelector('#keyInput'), btn = w.querySelector('#keySave');
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const key = keyIn.value.trim();
+      if (!key) { keyIn.focus(); return; }
+      btn.disabled = true; btn.textContent = 'Verificando…';
+      showKeyMsg('', 'Confirmando a chave com a NVIDIA…');
+      vscode.postMessage({ type: 'saveKey', key });
+    });
+    return w;
+  }
+  function showKeyMsg(kind, text) {
+    const m = $('keyMsg');
+    if (!m) return;
+    m.className = 'keymsg ' + kind;
+    m.textContent = text;
+  }
+  // /chaves: o mesmo guia, como um cartão na conversa.
+  function keysCard(k) {
+    hideWelcome();
+    const c = el('div', 'keys-card');
+    c.innerHTML = `
+      <h3>${I.key} Chaves</h3>
+      <p class="hint">Modelos de IA: precisa de pelo menos um.</p>
+      <ul class="klist">${providerList(k, false)}</ul>
+      <p class="hint">Ferramentas (opcionais)</p>
+      <ul class="klist">${toolsList(k)}</ul>`;
+    bindKeyActions(c);
+    add(c);
+  }
+
   function welcome() {
+    if (!state.hasKey) return onboarding();
     const w = el('div', 'welcome');
     w.innerHTML = `
       <img class="logo" src="${LOGO}" alt="">
       <h1>Em que posso ajudar?</h1>
-      ${state.hasKey ? '' : `<button class="keycard" id="keyBtn" type="button">${I.key}<span><b>Configurar a API key da NVIDIA</b><small>Necessária para usar o rfcode. Gere a chave em build.nvidia.com.</small></span></button>`}
       <div class="suggest">${SUGGESTIONS.map((s, i) => `
         <button class="sugg" type="button" data-i="${i}">
           <span class="ic">${s.icon}</span>
@@ -168,7 +260,6 @@
         </button>`).join('')}
       </div>
       <p class="tips">Use <code>@arquivo</code> para anexar um arquivo · clipe ou Ctrl+V para imagens · <kbd>Esc</kbd> interrompe</p>`;
-    w.querySelector('#keyBtn')?.addEventListener('click', () => vscode.postMessage({ type: 'setKey' }));
     w.querySelectorAll('.sugg').forEach((b) => b.addEventListener('click', () => {
       input.value = SUGGESTIONS[+b.dataset.i].prompt;
       send();
@@ -580,7 +671,7 @@
         renderModels(m.models, m.model);
         setEffort(m.effort);
         autoChk.checked = m.autoApprove;
-        state = { cwd: m.cwd, hasKey: m.hasKey };
+        state = { cwd: m.cwd, hasKey: m.hasKey, keys: m.keys };
         $('folder').innerHTML = `${I.folder}<span>${esc(baseName(m.cwd))}</span>`;
         $('folder').title = m.cwd;
         if (!log.querySelector('.msg')) resetLog();
@@ -588,6 +679,16 @@
       case 'keyStatus':
         state.hasKey = m.hasKey;
         log.querySelector('.welcome') && resetLog();
+        break;
+      case 'keyResult': {
+        if (m.ok) { note('info', m.text); input.focus(); break; }
+        showKeyMsg('error', m.text);
+        const b = $('keySave');
+        if (b) { b.disabled = false; b.textContent = 'Conectar'; }
+        break;
+      }
+      case 'keys':
+        keysCard(m);
         break;
       case 'autoChanged':
         autoChk.checked = m.value;

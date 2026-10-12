@@ -49,7 +49,10 @@ const ask = (q) => new Promise((res) => {
 });
 
 async function askApiKey(cfg) {
-  console.log(c.yellow('\nInforme sua API key da NVIDIA. Para gerar uma, acesse https://build.nvidia.com e clique em "Get API Key".'));
+  const { NVIDIA_STEPS } = require('../lib/keys');
+  console.log(c.yellow('\nO rfcode usa os modelos gratuitos da NVIDIA. Para obter a sua chave:'));
+  NVIDIA_STEPS.forEach((s, i) => console.log(c.yellow(`  ${i + 1}. ${s.text}`) + (s.url ? c.dim(`  ${s.url}`) : '')));
+  console.log(c.dim('  Chaves de outros provedores e das ferramentas: /chaves\n'));
   while (true) {
     const answer = await ask(c.bold('NVIDIA API key (nvapi-...): '));
     if (answer === null) process.exit(1);
@@ -437,6 +440,11 @@ async function handleCommand(state, cfg, line) {
     case 'key':
       agent.apiKey = await askApiKey(cfg);
       return;
+    case 'chaves': {
+      const k = require('../lib/keys');
+      console.log(k.formatKeysGuide(k.keysStatus(loadConfig(), { nvidiaKey: agent.apiKey || loadConfig().apiKey, cwd: agent.cwd })).replace(/^/gm, '  '));
+      return null;
+    }
     case 'clear':
       agent.clear();
       console.log(c.dim('Conversa limpa.'));

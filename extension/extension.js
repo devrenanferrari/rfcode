@@ -98,18 +98,47 @@ class ChatViewProvider {
         vscode.window.showErrorMessage('rfcode: chave inválida (401/403). Tente de novo.');
         continue;
       }
-      await this.context.secrets.store(SECRET_KEY, key);
-      const cfg = loadConfig();
-      cfg.apiKey = key;
-      saveConfig(cfg);
-      if (this.agent) this.agent.apiKey = key;
+      await this.storeNvidiaKey(key);
       vscode.window.showInformationMessage('rfcode: API key salva.');
-      this.post({ type: 'keyStatus', hasKey: true });
       return key;
     }
   }
 
+  async storeNvidiaKey(key) {
+    await this.context.secrets.store(SECRET_KEY, key);
+    const cfg = loadConfig();
+    cfg.apiKey = key;
+    saveConfig(cfg);
+    if (this.agent) this.agent.apiKey = key;
+    this.post({ type: 'keyStatus', hasKey: true });
+  }
+
   async setApiKey() { await this.getApiKey(true); }
+
+  // Chave colada na tela inicial do painel: valida e responde no próprio painel.
+  async saveKeyFromPanel(raw) {
+    const key = String(raw || '').trim().replace(/^["']|["']$/g, '');
+    if (!key.startsWith('nvapi-')) return this.postLocal({ type: 'keyResult', ok: false, text: 'A chave da NVIDIA começa com "nvapi-". Confira se copiou a chave inteira.' });
+    const r = await validateKey(key);
+    if (r === 'invalid') return this.postLocal({ type: 'keyResult', ok: false, text: 'A NVIDIA recusou essa chave. Gere uma nova em Settings > API Keys e cole de novo.' });
+    await this.storeNvidiaKey(key);
+    return this.postLocal({ type: 'keyResult', ok: true, text: r === 'offline' ? 'Chave salva. Não consegui confirmar agora (sem conexão com a NVIDIA); ela será usada no primeiro pedido.' : 'Chave confirmada e salva. Pronto para usar.' });
+  }
+
+  async keysGuide() {
+    const nv = (await this.context.secrets.get(SECRET_KEY)) || loadConfig().apiKey || '';
+    return { type: 'keys', ...require('../lib/keys').keysStatus(loadConfig(), { nvidiaKey: nv, cwd: workspaceCwd() }) };
+  }
+
+  async saveToolKey(id, raw) {
+    const t = require('../lib/keys').TOOL_KEYS.find((x) => x.id === id);
+    if (!t || !t.configKey) return;
+    const key = raw !== undefined ? String(raw).trim() : await vscode.window.showInputBox({ title: `rfcode: chave de ${t.name}`, prompt: t.steps, password: true, ignoreFocusOut: true });
+    if (!key) return;
+    saveConfig(require('../lib/keys').saveToolKey(id, key, loadConfig()));
+    this.post({ type: 'info', text: `Chave de ${t.name} salva.` });
+    this.postLocal(await this.keysGuide());
+  }
 
   ensureAgent(apiKey = '') {
     if (!this.agent) this.agent = new Agent({ apiKey, model: settings().get('model') || DEFAULT_MODEL, effort: settings().get('effort'), cwd: workspaceCwd(), saveSession: true, extraTools: VSCODE_TOOLS });
@@ -175,6 +204,7 @@ class ChatViewProvider {
       : provider === 'nvidia' ? !!nv : providers.PROVIDERS[provider].needsKey === false || !!providers.keyFor(provider, cfg);
     return {
       type: 'init', model, models: await this.modelList(model), cwd: workspaceCwd(), hasKey,
+      keys: hasKey ? null : await this.keysGuide(),
       effort: this.agent?.effort || settings().get('effort') || 'medium',
       autoApprove: this.agent ? this.agent.autoApprove : settings().get('autoApprove') || false,
       commands: listCommands(workspaceCwd(), 'ui'),
@@ -226,6 +256,14 @@ class ChatViewProvider {
       case 'stop': return this.stop();
       case 'newChat': return this.newChat();
       case 'setKey': return from === 'local' ? this.setApiKey() : undefined;
+      case 'saveKey': return from === 'local' ? this.saveKeyFromPanel(m.key) : undefined;
+      case 'saveToolKey': return from === 'local' ? this.saveToolKey(m.id) : undefined;
+      case 'keysGuide': return this.postLocal(await this.keysGuide());
+      case 'setupProvider': {
+        if (from !== 'local' || !(await this.setupProvider(m.id))) return undefined;
+        return this.postLocal(await this.initMessage());
+      }
+      case 'openUrl': return from === 'local' && /^https:\/\//.test(m.url || '') ? vscode.env.openExternal(vscode.Uri.parse(m.url)) : undefined;
       case 'setModel': return this.setModel(m.model);
       case 'setAuto': return this.setAuto(!!m.value);
       case 'setEffort': return this.setEffort(m.effort);
@@ -404,6 +442,7 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
       }
       case 'remote': return this.remote?.running ? this.showRemote() : this.startRemote();
       case 'key': return this.setApiKey();
+      case 'chaves': return this.postLocal(await this.keysGuide());
       case 'provider': return this.setupProvider(args || undefined);
       case 'models': {
         if (args) {

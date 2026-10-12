@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.17.0
+
+- Primeira vez no painel: em vez do chat vazio, o rfcode abre um passo a passo para criar a chave gratuita da NVIDIA (com links direto para build.nvidia.com e para a página de API Keys) e um campo para colar a chave, que é validada ali mesmo. Chave errada mostra o motivo sem sair da tela.
+- Na mesma tela: outros provedores (Groq, Gemini, OpenRouter, GitHub Models, OpenAI, Anthropic, Ollama), cada um com o link para obter a chave, e as chaves opcionais das ferramentas (pesquisa na web, GitHub, conectores).
+- `/chaves` (painel e terminal): mostra o que já está configurado e onde conseguir cada chave. A chave da pesquisa na web (Brave) pode ser colada por ali.
+- No terminal, o primeiro uso também mostra os passos para obter a chave da NVIDIA.
+
 ## 1.16.0
 
 - Modelo auto (`/model auto`, `--model auto` ou "auto" no seletor): usa sempre o modelo mais forte disponível entre todos os provedores com chave (nota de força por modelo) e troca sozinho, sem espera, quando um atinge o limite de pedidos ou para de responder; volta ao melhor assim que a cota libera. O seletor mostra o modelo em uso ("auto · kimi-k3"). Lista própria em `autoModels` no config.json.

@@ -16,7 +16,7 @@ Pelo VS Code: procure por rfcode na aba de extensões (`Ctrl+Shift+X`).
 
 Pelo arquivo: baixe o `.vsix` em [Releases](https://github.com/devrenanferrari/rfcode/releases) e instale com `code --install-extension rfcode.vsix`.
 
-Na primeira execução, o rfcode pede uma API key da NVIDIA. Gere a sua em [build.nvidia.com](https://build.nvidia.com) (Get API Key). A chave fica no armazenamento seguro do VS Code. Para usar outro provedor, veja [Provedores](#provedores).
+Na primeira vez, o painel mostra como criar a chave gratuita da NVIDIA: entre em [build.nvidia.com](https://build.nvidia.com), abra Settings > [API Keys](https://build.nvidia.com/settings/api-keys), clique em Generate API Key e cole a chave (começa com `nvapi-`) no campo do painel. Ela é validada na hora e fica no armazenamento seguro do VS Code. Na mesma tela dá para escolher outro provedor (veja [Provedores](#provedores)) e ver as chaves opcionais das ferramentas. Depois, `/chaves` mostra o que está configurado e onde conseguir cada chave.
 
 ## Recursos
 
@@ -78,6 +78,7 @@ Digite `/` no campo de mensagem para abrir a lista.
 | `/memory [texto]` | Mostra ou acrescenta itens na memória |
 | `/remote` | Liga o controle remoto |
 | `/key` | Troca a API key |
+| `/chaves` | Onde obter as chaves dos modelos e das ferramentas, e quais já estão configuradas |
 
 Comandos personalizados ficam em `.rfcode/commands/<nome>.md` (projeto) ou `~/.rfcode/commands/` (usuário). O conteúdo do arquivo é o pedido, e `$ARGUMENTS` é substituído pelo texto digitado depois do comando. Uma primeira linha `description: ...` define a descrição exibida no menu.
 
