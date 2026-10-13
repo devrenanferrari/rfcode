@@ -33,7 +33,10 @@ Na primeira vez, o painel mostra como criar a chave gratuita da NVIDIA: entre em
 - APIs: chamadas REST para sistemas internos, com tokens por referência que nunca aparecem na conversa.
 - Empresas: regras de permissão, hooks, política gerenciada pela TI e auditoria de cada ação. Veja [docs/EMPRESAS.md](docs/EMPRESAS.md).
 - Documentos: gera apresentações PowerPoint com gráficos e diagramas nativos e editáveis (colunas, empilhado, barras, linha, pizza, rosca e cascata com CAGR e setas de diferença; processo, linha do tempo, funil, pirâmide, matriz 2x2, ciclo, cartões, hub, Venn, TAM/SAM/SOM e tabelas), conclusão em destaque, fontes e notas do apresentador, em 7 temas. Gera Word a partir de markdown e lê PDF, Word, PowerPoint e Excel.
-- Vídeo: gera vídeos com narração em português e legendas. Saída em WebM, ou MP4 quando o ffmpeg está instalado.
+- Vídeo: gera vídeos com narração em português e legendas. Saída em WebM, ou MP4 quando o ffmpeg está instalado. Para animações mais elaboradas, usa projetos conhecidos do GitHub: Remotion (vídeo em React), Manim (animação em Python), Motion Canvas e reveal.js (slides).
+- Sites: cria a base de um site com os starters mais usados (Vite, Next.js, Astro, SvelteKit, Remix) e adiciona Tailwind CSS ou shadcn/ui, sem perguntas interativas.
+- Qualidade de código: roda ESLint, Prettier, Biome, Ruff, Semgrep e a checagem de tipos do TypeScript, só relatando ou corrigindo automaticamente.
+- Engenharia reversa: análise estática de binários (sem executar o arquivo) com radare2 ou rizin, Ghidra headless, binwalk e as binutils, para cabeçalhos, textos, símbolos, desmontagem e arquivos embutidos.
 - Pesquisa: busca na web com citação das fontes e subagentes para pesquisas mais amplas.
 - Navegador: controla uma instância própria do Chrome. Envio de formulários, pagamentos e exclusões sempre exigem confirmação.
 - Memória: guarda preferências do usuário entre conversas (`/memory`).

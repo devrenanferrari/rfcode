@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.18.0
+
+- Ferramentas que usam projetos famosos do GitHub, carregadas sob demanda quando o pedido fala do assunto:
+  - Sites (`web_scaffold`): cria a base de um site com os starters mais usados, sem perguntas: Vite, Next.js, Astro, SvelteKit e Remix, e adiciona Tailwind CSS ou shadcn/ui a um projeto existente.
+  - Vídeos de apresentação (`motion_video`): além do vídeo narrado nativo, cria e renderiza animações com Remotion (vídeo em React), Manim (animação em Python), Motion Canvas (TypeScript) ou reveal.js (slides em HTML).
+  - Qualidade de código (`code_quality`): roda ESLint, Prettier, Biome, Ruff, Semgrep e a checagem de tipos do TypeScript. O modo check só relata; o modo fix corrige e pede aprovação.
+  - Engenharia reversa (`reverse_engineer`): análise estática (só leitura, nunca executa o binário) com radare2 ou rizin, Ghidra headless, binwalk e as binutils (file, strings, nm, objdump) para informações, textos, símbolos, desmontagem e arquivos embutidos.
+- Cada ferramenta detecta se o programa está instalado e, quando falta, aponta o projeto no GitHub e como instalar.
+
 ## 1.17.1
 
 - Sem limite de passos: o agente (e os subagentes) seguem até terminar a tarefa, em vez de parar em 100 ações. A única trava é para quando o modelo empaca repetindo exatamente a mesma ação 6 vezes. `--max-steps` continua disponível para quem quiser um teto, e as missões seguem trabalhando em ciclos.
