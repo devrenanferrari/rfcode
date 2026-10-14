@@ -81,6 +81,22 @@ test('deep_research: dispara várias buscas, deduplica por URL e limita por dom�
   }
 });
 
+test('compute: contas exatas, ajudas, data e bloqueio de escape', () => {
+  const tool = require('../lib/tools/compute');
+  assert.strictEqual(tool.needsApproval(), false);
+  assert.strictEqual(tool.run('compute', { expression: '2 + 3 * 4' }), '14');
+  assert.strictEqual(tool.run('compute', { expression: 'sum(data)', data: [10, 20, 30.5] }), '60.5');
+  assert.strictEqual(tool.run('compute', { expression: 'round(avg(data), 2)', data: [1, 2, 4] }), '2.33');
+  assert.strictEqual(tool.run('compute', { expression: "daysBetween('2026-01-01','2026-01-31')" }), '30');
+  // objeto sai como JSON
+  assert.match(tool.run('compute', { expression: '({a: 1+1, b: max(data)})', data: [3, 9, 5] }), /"b": 9/);
+  // validação e sandbox
+  assert.throws(() => tool.run('compute', { expression: '' }), /expressão/);
+  assert.throws(() => tool.run('compute', { expression: 'require("fs")' }), /não permitida/);
+  assert.throws(() => tool.run('compute', { expression: 'process.exit(1)' }), /não permitida/);
+  assert.throws(() => tool.run('compute', { expression: 'while(true){}' }), /não permitida/);
+});
+
 test('deep_research: valida pergunta vazia e trata buscas sem retorno', async () => {
   const research = require('../lib/tools/research');
   await assert.rejects(() => research.run('deep_research', { question: '' }, {}), /pergunta/);

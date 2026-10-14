@@ -5,7 +5,8 @@
 - Cérebro do projeto: o rfcode agora aprende sobre cada projeto ao longo das conversas. O que ele descobre sozinho (como buildar/rodar/testar, onde fica cada parte, armadilhas, a causa de um bug corrigido, comandos que funcionaram) fica em `.rfcode/brain.json` e volta no contexto das próximas conversas, deixando o agente mais rápido e certeiro. As ferramentas learn (guardar) e recall (consultar) são sempre disponíveis; o cérebro não guarda segredos. É diferente da memória de preferências do usuário e do RFCODE.md escrito por uma pessoa.
 - Raciocínio deliberado: a ferramenta think deixa o agente parar e pensar antes de decidir em casos difíceis (hipóteses, opções, riscos, decisão), e self_check monta uma checklist dos critérios do pedido para conferir item por item antes de concluir.
 - Pesquisa profunda: deep_research dispara várias buscas de ângulos diferentes sobre a mesma pergunta, junta e deduplica as fontes e devolve um dossiê com os melhores links para a resposta citar.
-- O modo de trabalho do agente foi atualizado para usar essas capacidades: consultar o cérebro antes de investigar do zero, guardar lições duráveis, pensar antes de agir e se autoverificar no fim.
+- Cálculo exato: a ferramenta compute avalia expressões (aritmética, datas, porcentagens, estatística, transformação de listas) de forma determinística num sandbox sem acesso a arquivos, rede ou sistema, para o agente não errar contas.
+- O modo de trabalho do agente foi atualizado para usar essas capacidades: consultar o cérebro antes de investigar do zero, guardar lições duráveis, pensar antes de agir, calcular com exatidão e se autoverificar no fim.
 
 ## 1.18.0
 

@@ -38,7 +38,7 @@ Na primeira vez, o painel mostra como criar a chave gratuita da NVIDIA: entre em
 - Qualidade de código: roda ESLint, Prettier, Biome, Ruff, Semgrep e a checagem de tipos do TypeScript, só relatando ou corrigindo automaticamente.
 - Engenharia reversa: análise estática de binários (sem executar o arquivo) com radare2 ou rizin, Ghidra headless, binwalk e as binutils, para cabeçalhos, textos, símbolos, desmontagem e arquivos embutidos.
 - Pesquisa: busca na web com citação das fontes e subagentes para pesquisas mais amplas. A pesquisa profunda dispara várias buscas de ângulos diferentes e monta um dossiê de fontes para a resposta.
-- Raciocínio: em decisões difíceis, bugs sutis ou pedidos ambíguos, o agente pensa antes de agir (hipóteses, opções, riscos) e faz uma autoverificação contra os critérios do pedido antes de concluir.
+- Raciocínio: em decisões difíceis, bugs sutis ou pedidos ambíguos, o agente pensa antes de agir (hipóteses, opções, riscos) e faz uma autoverificação contra os critérios do pedido antes de concluir. Para contas exatas (somas, porcentagens, datas, estatística), calcula de verdade num sandbox em vez de estimar.
 - Cérebro do projeto: o rfcode guarda o que descobre sozinho sobre cada projeto (como buildar e testar, onde fica cada parte, armadilhas, causas de bugs já corrigidos) em `.rfcode/brain.json` e usa isso nas próximas conversas, ficando mais rápido e certeiro com o tempo. É diferente da memória de preferências e do RFCODE.md escrito por uma pessoa.
 - Navegador: controla uma instância própria do Chrome. Envio de formulários, pagamentos e exclusões sempre exigem confirmação.
 - Memória: guarda preferências do usuário entre conversas (`/memory`).
