@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.22.0
+
+- Catálogo atualizado com as ferramentas de código em alta no GitHub, incluindo uma categoria nova de IA e agentes de código: aider, opencode, Codex CLI, Gemini CLI, Claude Code, Crush, Goose, Continue, Qwen Code, llm, ShellGPT, mods, Ollama, repomix, code2prompt e files-to-prompt.
+- Também entraram ferramentas modernas e rápidas muito usadas hoje: oxlint (oxc), jj (Jujutsu), difftastic, gitui, lefthook, lazydocker, mise, devbox, dprint, typos, sccache, zed e fnm.
+- O catálogo passou de 224 para mais de 250 programas que o rfcode sabe descobrir e rodar sob demanda.
+
 ## 1.21.0
 
 - Caixa de ferramentas com mais de 200 CLIs famosos: o rfcode agora conhece um catálogo de mais de 200 programas de linha de comando do dia a dia do dev (git e GitHub, JavaScript/TypeScript, Python, Go/Rust e outras linguagens, Docker e Kubernetes, nuvem, infraestrutura como código, bancos de dados, HTTP/rede, mídia e documentos, busca e texto, formatadores e linters, segurança e engenharia reversa, shell e release). Ele descobre a ferramenta certa com toolbox (por categoria ou busca) e roda com toolbox_run, que instala sob demanda pelo gerenciador do sistema (com aprovação) se faltar. Em vez de uma ferramenta embutida para cada programa (o que incharia o contexto), há um catálogo pesquisável e dois despachantes, como fazem o Claude Code e o Codex.

@@ -20,6 +20,9 @@ test('catálogo: 200+ ferramentas, sem duplicatas, categorias rotuladas, mapas d
     assert.ok(/^[\w.+-]+$/.test(t.b || t.n), `binário seguro: ${t.n}`);
   }
   assert.ok(find('rg') && find('RG'), 'find case-insensitive');
+  // categoria de IA/agentes de código (tendência recente do GitHub)
+  assert.ok(CATEGORIES.ia, 'categoria ia rotulada');
+  for (const n of ['aider', 'opencode', 'codex', 'llm', 'repomix']) assert.ok(find(n), `catálogo tem ${n}`);
 });
 
 test('toolbox: categorias, listagem e busca', () => {
