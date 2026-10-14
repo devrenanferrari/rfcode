@@ -20,7 +20,9 @@ Na primeira vez, o painel mostra como criar a chave gratuita da NVIDIA: entre em
 
 ## Recursos
 
-- Código: leitura, busca, edição (incluindo várias edições atômicas no mesmo arquivo), execução de comandos e testes e desfazer.
+- Código: leitura, busca, edição (incluindo várias edições atômicas no mesmo arquivo e aplicação de diff unificado em vários arquivos), execução de comandos e testes e desfazer. Descobre sozinho como rodar os testes do projeto, resume a stack, refatora por regex em vários arquivos, gera diff, calcula checksums e mede desempenho.
+- Instala sob demanda: quando falta um programa externo (ffmpeg, radare2, jq...), instala pelo gerenciador do sistema com aprovação, em vez de parar. Para a maioria das coisas, porém, resolve escrevendo código e rodando comando, como o Claude Code e o Codex.
+- Pré-visualização: sobe um servidor estático local para ver um site ou HTML, e compacta/extrai .zip sem instalar nada.
 - Entender código complexo: mapa de classes e funções em 12 linguagens, definição e referências, leitura de uma função só, grafo de dependências com impacto de cada mudança e busca por significado ("onde o desconto é calculado"). `/entender` explica a arquitetura de um projeto.
 - Missões: tarefas de horas ou dias em segundo plano, em ciclos com estado salvo, commits de segurança numa branch própria e retomada automática (`/missao`). Veja [docs/AUTOMACAO.md](docs/AUTOMACAO.md).
 - Agendamentos: "dias úteis às 8h: resuma os pull requests" roda pelo agendador do sistema, mesmo com o rfcode fechado (`/agendar`).

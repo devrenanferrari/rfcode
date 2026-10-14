@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.20.0
+
+- Instalar sob demanda (ensure_tool): quando falta um programa externo (ffmpeg, radare2, jq, manim, ruff...), o rfcode instala sozinho pelo gerenciador certo do sistema (npm, pip/pipx, brew, apt, dnf, pacman, winget, choco, scoop, cargo, go), sempre com aprovação. Antes ele parava e mandava você instalar na mão; agora resolve igual Claude Code e Codex, mantendo o controle na sua mão. O modo de trabalho foi ajustado para preferir resolver com código e comando, e só instalar quando for mesmo necessário.
+- Novas ferramentas gerais:
+  - apply_patch: aplica um diff unificado em vários arquivos de uma vez, localizando o contexto mesmo se as linhas tiverem deslocado (como Claude Code e Codex).
+  - run_tests: descobre sozinho como o projeto roda os testes (npm/pnpm/yarn, cargo, go, pytest, make) e roda, resumindo o resultado.
+  - detect_stack: resume a stack do projeto (linguagens, gerenciador, scripts, frameworks, comandos de testar/buildar/rodar).
+  - replace_in_files: busca e substitui por regex em vários arquivos, com prévia antes de efetivar.
+  - diff: gera um diff unificado entre textos ou arquivos.
+  - json_query: lê um JSON e avalia uma expressão sobre ele num sandbox seguro.
+  - hash: calcula checksums (sha256, md5...) de arquivos ou texto.
+  - bench: mede o tempo de um comando em várias execuções.
+  - serve: sobe um servidor estático local para pré-visualizar um site/HTML, sem instalar nada.
+  - archive: compacta e extrai arquivos .zip, com proteção contra path traversal.
+- Os subagentes de pesquisa agora também podem usar detect_stack, diff, json_query e hash (tudo só leitura).
+
 ## 1.19.0
 
 - Cérebro do projeto: o rfcode agora aprende sobre cada projeto ao longo das conversas. O que ele descobre sozinho (como buildar/rodar/testar, onde fica cada parte, armadilhas, a causa de um bug corrigido, comandos que funcionaram) fica em `.rfcode/brain.json` e volta no contexto das próximas conversas, deixando o agente mais rápido e certeiro. As ferramentas learn (guardar) e recall (consultar) são sempre disponíveis; o cérebro não guarda segredos. É diferente da memória de preferências do usuário e do RFCODE.md escrito por uma pessoa.
