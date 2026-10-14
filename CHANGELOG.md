@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.23.0
+
+- Aprendizado por experiência (plasticidade): o cérebro do projeto deixou de ser memória passiva e passou a se ajustar pelo resultado. Cada lição tem um peso; recuperar uma lição a reforça; reflect consolida no fim da tarefa o que funcionou e o que evitar; e reinforce fortalece o que ajudou e enfraquece (até esquecer) o que enganou. Assim o rfcode repete menos erros e chega mais rápido ao que funciona a cada conversa. O modo de trabalho foi atualizado para refletir no fim de tarefas com tentativa e erro.
+- Documento docs/PLASTICIDADE.md explicando como as capacidades (memória, raciocínio, repertório de ferramentas, reforço) formam um ciclo de aprendizado, e o que ainda falta.
+
 ## 1.22.0
 
 - Catálogo atualizado com as ferramentas de código em alta no GitHub, incluindo uma categoria nova de IA e agentes de código: aider, opencode, Codex CLI, Gemini CLI, Claude Code, Crush, Goose, Continue, Qwen Code, llm, ShellGPT, mods, Ollama, repomix, code2prompt e files-to-prompt.

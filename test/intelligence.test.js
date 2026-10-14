@@ -41,6 +41,27 @@ test('cérebro (ferramenta): learn/recall e sem aprovação', () => {
   assert.match(tool.run('recall', {}, { cwd: tmp() }), /vazio/);
 });
 
+test('plasticidade: reflect consolida, reinforce ajusta peso e brief prioriza o reforçado', () => {
+  const brain = require('../lib/brain');
+  const tool = require('../lib/tools/brain');
+  const d = tmp();
+  // reflect guarda o que funcionou e o que evitar
+  const r = tool.run('reflect', { worked: ['usar cache de deps acelera o CI'], avoid: ['rodar build sem instalar deps falha'], tags: ['ci'] }, { cwd: d });
+  assert.match(r, /2 lição/);
+  assert.match(tool.run('recall', { query: 'ci build deps' }, { cwd: d }), /EVITE: rodar build/);
+  // reinforce negativo enfraquece até esquecer
+  brain.learn(d, { text: 'dica duvidosa sobre xyz', tags: ['xyz'] });
+  assert.strictEqual(brain.recall(d, { query: 'xyz' }).length, 1);
+  tool.run('reinforce', { query: 'xyz', good: false, amount: 2 }, { cwd: d }); // peso 1 -> 0 -> esquecido
+  assert.strictEqual(brain.recall(d, { query: 'xyz' }).length, 0);
+  // peso maior sobe no brief (fica à vista no prompt)
+  const d2 = tmp();
+  brain.learn(d2, { text: 'fato comum do projeto' });
+  brain.learn(d2, { text: 'regra importante reforçada', weight: 5 });
+  const brief = brain.brief(d2);
+  assert.ok(brief.indexOf('regra importante') < brief.indexOf('fato comum'), 'reforçado aparece antes');
+});
+
 test('think e self_check: puros, sem aprovação, com validação', () => {
   const tool = require('../lib/tools/think');
   assert.strictEqual(tool.needsApproval(), false);
