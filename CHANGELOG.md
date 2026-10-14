@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.21.0
+
+- Caixa de ferramentas com mais de 200 CLIs famosos: o rfcode agora conhece um catálogo de mais de 200 programas de linha de comando do dia a dia do dev (git e GitHub, JavaScript/TypeScript, Python, Go/Rust e outras linguagens, Docker e Kubernetes, nuvem, infraestrutura como código, bancos de dados, HTTP/rede, mídia e documentos, busca e texto, formatadores e linters, segurança e engenharia reversa, shell e release). Ele descobre a ferramenta certa com toolbox (por categoria ou busca) e roda com toolbox_run, que instala sob demanda pelo gerenciador do sistema (com aprovação) se faltar. Em vez de uma ferramenta embutida para cada programa (o que incharia o contexto), há um catálogo pesquisável e dois despachantes, como fazem o Claude Code e o Codex.
+- O modo de trabalho foi ajustado para consultar o catálogo quando o agente não lembra qual programa serve para uma tarefa, e preferir run_command para pipelines.
+
 ## 1.20.0
 
 - Instalar sob demanda (ensure_tool): quando falta um programa externo (ffmpeg, radare2, jq, manim, ruff...), o rfcode instala sozinho pelo gerenciador certo do sistema (npm, pip/pipx, brew, apt, dnf, pacman, winget, choco, scoop, cargo, go), sempre com aprovação. Antes ele parava e mandava você instalar na mão; agora resolve igual Claude Code e Codex, mantendo o controle na sua mão. O modo de trabalho foi ajustado para preferir resolver com código e comando, e só instalar quando for mesmo necessário.

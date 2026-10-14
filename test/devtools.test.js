@@ -17,8 +17,9 @@ test('setup/ensure_tool: já instalado, detecção de gerenciadores e aprovaçã
   assert.match(setup.run('ensure_tool', { tool: 'node' }, { cwd: tmp() }), /já está instalado/);
   assert.throws(() => setup.run('ensure_tool', { tool: 'rm -rf /' }, { cwd: tmp() }), /nome do programa/);
   assert.ok(Array.isArray(setup._test.available()));
-  assert.strictEqual(setup._test.pkgFor('ffmpeg', 'apt'), 'ffmpeg');
-  assert.strictEqual(setup._test.pkgFor('ffmpeg', 'winget'), 'Gyan.FFmpeg');
+  const ff = setup._test.KNOWN.ffmpeg;
+  assert.strictEqual(setup._test.pkgFor(ff, 'apt', 'ffmpeg'), 'ffmpeg');
+  assert.strictEqual(setup._test.pkgFor(ff, 'winget', 'ffmpeg'), 'Gyan.FFmpeg');
 });
 
 test('apply_patch: altera arquivo existente e cria arquivo novo', () => {
