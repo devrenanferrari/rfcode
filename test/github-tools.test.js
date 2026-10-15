@@ -51,6 +51,29 @@ test('web_scaffold: stack inválida e aprovação', () => {
   assert.match(MODS.web.describe('web_scaffold', { stack: 'next', name: 'loja' }), /Site\(next loja\)/);
 });
 
+test('web_scaffold: cobre front-end, meta-frameworks, back-end, SSG e mobile/desktop', () => {
+  const S = MODS.web._test.STACKS;
+  assert.ok(Object.keys(S).length >= 25, `esperado muitas stacks, veio ${Object.keys(S).length}`);
+  for (const s of ['vite-react', 'next', 'nuxt', 'sveltekit', 'angular', 'solid', 'qwik', 't3', 'nestjs', 'hono', 'astro', 'docusaurus', 'expo', 'tauri', 'electron', 'react-router']) {
+    assert.ok(S[s], `stack ${s} presente`);
+    assert.ok(S[s].from && S[s].cat && (S[s].bin && Array.isArray(S[s].a)), `stack ${s} bem formada`);
+  }
+  const cats = new Set(Object.values(S).map((x) => x.cat));
+  for (const c of ['front-end', 'fullstack', 'back-end', 'ssg/docs', 'mobile/desktop']) assert.ok(cats.has(c), `categoria ${c}`);
+  // nenhum %n sobrou sem o marcador (sanidade dos templates)
+  for (const [k, v] of Object.entries(S)) assert.ok(v.a.includes('%n'), `stack ${k} usa o nome do projeto`);
+});
+
+test('guia de front-end existe e cobre escolha de stack e qualidade', () => {
+  const fs = require('fs');
+  const g = fs.readFileSync(require('path').join(__dirname, '..', 'lib', 'guides', 'frontend.md'), 'utf8');
+  assert.match(g, /web_scaffold/);
+  assert.match(g, /acessibilidade/i);
+  assert.match(g, /SSR|meta-framework/i);
+  // ligado ao grupo websites no agent.js
+  assert.match(fs.readFileSync(require('path').join(__dirname, '..', 'lib', 'agent.js'), 'utf8'), /websites: 'frontend'/);
+});
+
 test('code_quality: tool inválida, fix em ferramenta só-leitura e regra de aprovação', () => {
   assert.throws(() => MODS.quality.run('code_quality', { tool: 'xpto' }, { cwd: tmp() }), /tool inválida/);
   assert.throws(() => MODS.quality.run('code_quality', { tool: 'semgrep', action: 'fix' }, { cwd: tmp() }), /só analisa/);

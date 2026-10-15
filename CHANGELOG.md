@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.25.0
+
+- Muito mais poder para front-end, sites e sistemas. O web_scaffold passou de 9 para 27 stacks oficiais, em cinco grupos: front-end/SPA (Vite com React, Vue, Svelte, Preact, Lit, Vanilla, e Solid), meta-frameworks/fullstack (Next, Nuxt, SvelteKit, React Router, Remix, Astro, Angular, SolidStart, Qwik, T3, Redwood), back-end (NestJS, Hono, Express), geradores de site e docs (Docusaurus, Starlight, Hugo) e mobile/desktop (Expo, Electron, Tauri). Os comandos de criação foram conferidos nas docs atuais, rodam sem interação (a entrada é fechada para não travar em prompts) e ainda adicionam Tailwind ou shadcn a um projeto existente.
+- Conhecimento de front-end: um guia (lib/guides/frontend.md) entra no contexto quando o assunto é web e ensina a escolher a stack pelo tipo de projeto, estruturar componentes e estado, estilo, acessibilidade, desempenho e verificação, e a guardar o que aprender com learn/crystallize.
+- Catálogo com mais CLIs de framework e sistema: Angular (ng), Nuxt (nuxi), NestJS (nest), Astro, Expo e EAS, Tauri, Prisma, Drizzle, Storybook, shadcn, Tailwind, Convex, PocketBase e Capacitor. Catálogo passou para mais de 260 programas.
+
 ## 1.24.0
 
 - Aprende sozinho ao se recuperar de um erro: quando uma ação falha e logo em seguida algo dá certo, o rfcode é lembrado, ali no momento da recuperação, de guardar a lição no cérebro (com learn/reflect) para não repetir o mesmo erro. Antes dependia de o agente lembrar de fazer isso; agora o próprio fluxo puxa o aprendizado, uma vez por tarefa.
