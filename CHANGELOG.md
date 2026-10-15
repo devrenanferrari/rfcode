@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.26.0
+
+- Geração dentro do projeto (generate): depois do esqueleto, cria páginas, componentes, rotas, APIs e layouts na convenção do framework detectado (Next, React/Vite, Vue, Svelte, Solid). Em Angular, Nuxt e NestJS delega ao gerador oficial (ng/nuxi/nest); nos demais escreve um arquivo inicial correto, sem sobrescrever o que existe.
+- Conhecimento de back-end: um guia (lib/guides/backend.md) entra no contexto quando o assunto é API, servidor ou banco, e ensina escolha de stack, contrato primeiro, schema e migrações, segurança (segredos, hash de senha, autorização, CORS, rate limit), confiabilidade e verificação.
+- Hábito vira skill: crystallize ganhou kind "skill", que cristaliza um procedimento rico num SKILL.md (com frontmatter e seções) que entra sozinho quando o pedido casa com a descrição e as keywords, além do comando /nome que já existia.
+- O modo de trabalho foi atualizado para usar generate em projetos web e para cristalizar procedimentos recorrentes como comando ou skill.
+
 ## 1.25.0
 
 - Muito mais poder para front-end, sites e sistemas. O web_scaffold passou de 9 para 27 stacks oficiais, em cinco grupos: front-end/SPA (Vite com React, Vue, Svelte, Preact, Lit, Vanilla, e Solid), meta-frameworks/fullstack (Next, Nuxt, SvelteKit, React Router, Remix, Astro, Angular, SolidStart, Qwik, T3, Redwood), back-end (NestJS, Hono, Express), geradores de site e docs (Docusaurus, Starlight, Hugo) e mobile/desktop (Expo, Electron, Tauri). Os comandos de criação foram conferidos nas docs atuais, rodam sem interação (a entrada é fechada para não travar em prompts) e ainda adicionam Tailwind ou shadcn a um projeto existente.
