@@ -2,7 +2,7 @@
   "name": "rfcode",
   "displayName": "rfcode",
   "description": "Agente de IA para VS Code com os modelos gratuitos de build.nvidia.com. Edita código, executa testes, pesquisa na web, gera documentos e vídeos e automatiza tarefas no Windows.",
-  "version": "1.26.0",
+  "version": "1.27.0",
   "publisher": "renanferrari",
   "license": "MIT",
   "repository": {

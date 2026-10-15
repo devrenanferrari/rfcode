@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.27.0
+
+- Conhecimento de deploy: um guia (lib/guides/deploy.md) entra no contexto quando o assunto é publicar, e ensina a buildar antes, escolher o alvo (Vercel, Netlify, Cloudflare Pages/Workers, GitHub Pages, Fly), usar o CLI oficial via toolbox, preferir preview antes de produção, lidar com login interativo e confirmar o deploy de produção (ação externa).
+- Conhecimento de design/UI: um guia (lib/guides/design.md) entra no contexto quando o assunto é interface, e cobre espaçamento, tipografia, cor e tokens, componentes e estados, responsivo mobile-first, acessibilidade, movimento e feedback.
+- run_tests agora roda testes end-to-end (e2e: true): detecta o script test:e2e ou a configuração do Playwright/Cypress.
+- Catálogo com CLIs de auditoria e publicação: lighthouse, pa11y, gh-pages e surge.
+
 ## 1.26.0
 
 - Geração dentro do projeto (generate): depois do esqueleto, cria páginas, componentes, rotas, APIs e layouts na convenção do framework detectado (Next, React/Vite, Vue, Svelte, Solid). Em Angular, Nuxt e NestJS delega ao gerador oficial (ng/nuxi/nest); nos demais escreve um arquivo inicial correto, sem sobrescrever o que existe.
