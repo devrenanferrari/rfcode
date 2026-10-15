@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.27.1
+
+- Segurança: a detecção de programas (lib/tools/_exec.js) deixou de usar um shell. has() agora varre o PATH em Node puro e run() executa o binário direto com os argumentos em array, sem interpolação de shell, e recusa nomes com caracteres nulos ou quebras de linha. Remove o padrão apontado pelo CodeQL (comando de shell montado a partir de valores).
+
 ## 1.27.0
 
 - Conhecimento de deploy: um guia (lib/guides/deploy.md) entra no contexto quando o assunto é publicar, e ensina a buildar antes, escolher o alvo (Vercel, Netlify, Cloudflare Pages/Workers, GitHub Pages, Fly), usar o CLI oficial via toolbox, preferir preview antes de produção, lidar com login interativo e confirmar o deploy de produção (ação externa).

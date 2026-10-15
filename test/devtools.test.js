@@ -10,6 +10,18 @@ const http = require('http');
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'rf-dev-'));
 
+test('_exec: has() varre o PATH sem shell e rejeita nomes perigosos', () => {
+  const ex = require('../lib/tools/_exec');
+  assert.strictEqual(ex.has('node'), true);
+  assert.strictEqual(ex.has('definitivamente_nao_existe_xyz'), false);
+  // metacaracteres de shell nunca viram comando: tratados como nome de binário (inexistente)
+  assert.strictEqual(ex.has('foo; rm -rf /'), false);
+  assert.strictEqual(ex._test.badName('a\nb'), true);
+  assert.strictEqual(ex._test.badName('a\0b'), true);
+  assert.strictEqual(ex._test.badName('git'), false);
+  assert.throws(() => ex.run('bad\nname', []), /inválido/);
+});
+
 test('setup/ensure_tool: já instalado, detecção de gerenciadores e aprovação', () => {
   const setup = require('../lib/tools/setup');
   assert.strictEqual(setup.needsApproval(), true);
