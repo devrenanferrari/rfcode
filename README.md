@@ -20,7 +20,10 @@ Na primeira vez, o painel mostra como criar a chave gratuita da NVIDIA: entre em
 
 ## Recursos
 
-- Código: leitura, busca, edição (incluindo várias edições atômicas no mesmo arquivo), execução de comandos e testes e desfazer.
+- Código: leitura, busca, edição (incluindo várias edições atômicas no mesmo arquivo e aplicação de diff unificado em vários arquivos), execução de comandos e testes e desfazer. Descobre sozinho como rodar os testes do projeto, resume a stack, refatora por regex em vários arquivos, gera diff, calcula checksums e mede desempenho.
+- Caixa de ferramentas: conhece mais de 250 CLIs famosos do dev (git, Docker, Kubernetes, nuvem, bancos, mídia, PDF, rede, busca, linters, segurança, agentes de IA de código e as ferramentas mais recentes em alta no GitHub), descobre a certa por categoria ou busca e a executa instalando sob demanda se faltar.
+- Instala sob demanda: quando falta um programa externo (ffmpeg, radare2, jq...), instala pelo gerenciador do sistema com aprovação, em vez de parar. Para a maioria das coisas, porém, resolve escrevendo código e rodando comando, como o Claude Code e o Codex.
+- Pré-visualização: sobe um servidor estático local para ver um site ou HTML, e compacta/extrai .zip sem instalar nada.
 - Entender código complexo: mapa de classes e funções em 12 linguagens, definição e referências, leitura de uma função só, grafo de dependências com impacto de cada mudança e busca por significado ("onde o desconto é calculado"). `/entender` explica a arquitetura de um projeto.
 - Missões: tarefas de horas ou dias em segundo plano, em ciclos com estado salvo, commits de segurança numa branch própria e retomada automática (`/missao`). Veja [docs/AUTOMACAO.md](docs/AUTOMACAO.md).
 - Agendamentos: "dias úteis às 8h: resuma os pull requests" roda pelo agendador do sistema, mesmo com o rfcode fechado (`/agendar`).
@@ -33,8 +36,13 @@ Na primeira vez, o painel mostra como criar a chave gratuita da NVIDIA: entre em
 - APIs: chamadas REST para sistemas internos, com tokens por referência que nunca aparecem na conversa.
 - Empresas: regras de permissão, hooks, política gerenciada pela TI e auditoria de cada ação. Veja [docs/EMPRESAS.md](docs/EMPRESAS.md).
 - Documentos: gera apresentações PowerPoint com gráficos e diagramas nativos e editáveis (colunas, empilhado, barras, linha, pizza, rosca e cascata com CAGR e setas de diferença; processo, linha do tempo, funil, pirâmide, matriz 2x2, ciclo, cartões, hub, Venn, TAM/SAM/SOM e tabelas), conclusão em destaque, fontes e notas do apresentador, em 7 temas. Gera Word a partir de markdown e lê PDF, Word, PowerPoint e Excel.
-- Vídeo: gera vídeos com narração em português e legendas. Saída em WebM, ou MP4 quando o ffmpeg está instalado.
-- Pesquisa: busca na web com citação das fontes e subagentes para pesquisas mais amplas.
+- Vídeo: gera vídeos com narração em português e legendas. Saída em WebM, ou MP4 quando o ffmpeg está instalado. Para animações mais elaboradas, usa projetos conhecidos do GitHub: Remotion (vídeo em React), Manim (animação em Python), Motion Canvas e reveal.js (slides).
+- Sites, apps e sistemas: cria a base a partir de 27 starters oficiais, sem perguntas, em cinco grupos: front-end/SPA (Vite com React, Vue, Svelte, Preact, Lit, Vanilla, e Solid), fullstack (Next, Nuxt, SvelteKit, React Router, Remix, Astro, Angular, SolidStart, Qwik, T3, Redwood), back-end (NestJS, Hono, Express), geradores de site e docs (Docusaurus, Starlight, Hugo) e mobile/desktop (Expo, Electron, Tauri), e adiciona Tailwind ou shadcn a um projeto existente. Um guia de front-end orienta a escolha da stack, a estrutura, a acessibilidade e o desempenho.
+- Qualidade de código: roda ESLint, Prettier, Biome, Ruff, Semgrep e a checagem de tipos do TypeScript, só relatando ou corrigindo automaticamente.
+- Engenharia reversa: análise estática de binários (sem executar o arquivo) com radare2 ou rizin, Ghidra headless, binwalk e as binutils, para cabeçalhos, textos, símbolos, desmontagem e arquivos embutidos.
+- Pesquisa: busca na web com citação das fontes e subagentes para pesquisas mais amplas. A pesquisa profunda dispara várias buscas de ângulos diferentes e monta um dossiê de fontes para a resposta.
+- Raciocínio: em decisões difíceis, bugs sutis ou pedidos ambíguos, o agente pensa antes de agir (hipóteses, opções, riscos) e faz uma autoverificação contra os critérios do pedido antes de concluir. Para contas exatas (somas, porcentagens, datas, estatística), calcula de verdade num sandbox em vez de estimar.
+- Cérebro do projeto: o rfcode guarda o que descobre sozinho sobre cada projeto (como buildar e testar, onde fica cada parte, armadilhas, causas de bugs já corrigidos) em `.rfcode/brain.json` e usa isso nas próximas conversas, ficando mais rápido e certeiro com o tempo. É diferente da memória de preferências e do RFCODE.md escrito por uma pessoa.
 - Navegador: controla uma instância própria do Chrome. Envio de formulários, pagamentos e exclusões sempre exigem confirmação.
 - Memória: guarda preferências do usuário entre conversas (`/memory`).
 - Desenvolvimento: lê os diagnósticos do VS Code, abre o diff no editor antes da aprovação e executa processos em segundo plano.
