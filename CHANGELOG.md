@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.24.0
+
+- Aprende sozinho ao se recuperar de um erro: quando uma ação falha e logo em seguida algo dá certo, o rfcode é lembrado, ali no momento da recuperação, de guardar a lição no cérebro (com learn/reflect) para não repetir o mesmo erro. Antes dependia de o agente lembrar de fazer isso; agora o próprio fluxo puxa o aprendizado, uma vez por tarefa.
+- Cristaliza procedimentos repetidos em comandos (crystallize): quando um passo a passo se repete, ou o usuário pede um atalho, o rfcode o transforma num comando reutilizável (/nome) em .rfcode/commands, com aprovação. Hábito vira estrutura: na próxima vez é só chamar o comando.
+- docs/PLASTICIDADE.md atualizado: a captura automática do aprendizado e a promoção de hábito a comando deixam de ser "o que falta" e passam a existir.
+
 ## 1.23.0
 
 - Aprendizado por experiência (plasticidade): o cérebro do projeto deixou de ser memória passiva e passou a se ajustar pelo resultado. Cada lição tem um peso; recuperar uma lição a reforça; reflect consolida no fim da tarefa o que funcionou e o que evitar; e reinforce fortalece o que ajudou e enfraquece (até esquecer) o que enganou. Assim o rfcode repete menos erros e chega mais rápido ao que funciona a cada conversa. O modo de trabalho foi atualizado para refletir no fim de tarefas com tentativa e erro.

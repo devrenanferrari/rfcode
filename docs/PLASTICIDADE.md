@@ -36,20 +36,31 @@ Plasticidade = o sistema muda a si mesmo conforme o que vive. O ciclo tem quatro
 Sem o passo 3 e 4, o agente só tinha memória passiva (guardava se lembrasse). Com eles, ele **melhora com a
 experiência**: repete menos erros e chega mais rápido ao que funciona, projeto a projeto.
 
+## Captura automática (feito)
+
+O loop agora puxa o aprendizado sozinho: quando uma ação falha e logo em seguida algo dá certo, no instante da
+recuperação o agente é lembrado de guardar a lição (`reflectNudge` em `lib/agent.js`), uma vez por tarefa. A
+consolidação deixou de depender só da boa vontade do modelo. Não dispara em subagentes nem quando o cérebro
+não está disponível.
+
+## Hábito vira estrutura (feito, para comandos)
+
+`crystallize` transforma um procedimento repetido num comando reutilizável (`/nome` em `.rfcode/commands`).
+Quando o mesmo passo a passo se repete, ou o usuário pede um atalho, o agente o cristaliza e, na próxima vez,
+só chama o comando. É a plasticidade deixando um traço permanente.
+
 ## O que ainda falta para ir além (próximos passos)
 
 Isto é honesto sobre os limites atuais:
 
-- **Captura automática.** Hoje a consolidação depende do agente chamar `reflect`/`learn` (incentivado pelo
-  prompt). Um gancho no fim da tarefa que sugira isso de forma mais firme, ou capture sinais óbvios
-  (teste vermelho -> verde, erro repetido -> correção) sem depender da lembrança do modelo, fecharia a última
-  folga. Fica como gancho de loop, não de ferramenta, por ser mais invasivo.
+- **Promover hábito a skill.** `crystallize` cobre comandos; um procedimento mais rico (com arquivos de apoio)
+  poderia virar uma `SKILL.md` automaticamente.
 - **Cérebro compartilhado por equipe.** Hoje `.rfcode/brain.json` é local. Sincronizar (opt-in) o que é do
   projeto, e não do usuário, deixaria a equipe aprender junto.
-- **Esquecimento ativo.** Há decaimento por recência e poda por peso baixo e por teto de fatos; falta uma
-  revisão periódica que funda lições parecidas e aposente as obsoletas.
-- **Habilidade a partir de hábito.** Quando um mesmo procedimento se repete, promovê-lo automaticamente a uma
-  skill (`SKILL.md`) seria a plasticidade virando estrutura.
+- **Esquecimento ativo.** Há decaimento por recência, reforço por uso e resultado, e poda por peso baixo e por
+  teto de fatos; falta uma revisão periódica que funda lições parecidas e aposente as obsoletas.
+- **Captura sem recuperação explícita.** O gancho atual aprende na recuperação de falhas; sucessos "de primeira"
+  que ensinam algo durável ainda dependem do agente chamar `learn`.
 
 ## Princípio de projeto
 
