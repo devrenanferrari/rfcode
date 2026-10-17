@@ -344,7 +344,7 @@
     const bare = i > 0 && !id.slice(0, i).includes('/') ? id.slice(i + 1) : id;
     return bare.split('/').pop();
   };
-  // modo auto: a opção mostra o modelo que está em uso agora ("auto · kimi-k3")
+  // modo auto: a opção mostra o modelo que está em uso agora ("auto · glm-5.3")
   let autoInUse = '';
   function labelAuto() {
     const o = [...modelSel.options].find((x) => x.value === 'auto');

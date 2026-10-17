@@ -1,0 +1,9 @@
+# Como publicar (deploy) um site ou app
+- Antes de tudo: buildar e ver passar. Rode o build do projeto (npm run build ou o script do framework) e corrija erros; nunca publique um build quebrado. Confira as variáveis de ambiente de produção (sem segredos no código nem no git).
+- Escolha o alvo pelo tipo: site estático/SSG (Astro, Vite build, Next export) -> Netlify, Cloudflare Pages, GitHub Pages ou Vercel; app com SSR/edge/funções -> Vercel, Netlify, Cloudflare Workers (wrangler) ou Fly.io (flyctl); contêiner -> Fly, Render, ou a nuvem do time. Use o que o projeto/time já usa.
+- Use o CLI oficial via toolbox_run (instala sob demanda): vercel, netlify, wrangler (Cloudflare), flyctl, ou gh-pages para o GitHub Pages. O primeiro deploy quase sempre exige login/autenticação interativa: isso não roda sozinho no agente; detecte a necessidade, explique ao usuário o comando de login (ex.: vercel login) e o que falta, em vez de tentar à força.
+- Prefira deploy de preview antes do de produção quando o alvo oferece (Vercel/Netlify criam URL de preview por branch). Publique em produção só depois de ver o preview.
+- Pastas de saída comuns: Vite dist/, Next .next/ (ou out/ no export), Astro dist/, SvelteKit conforme o adapter. Configure o adapter/preset certo do framework para o alvo (ex.: @astrojs/netlify, adapter do SvelteKit) antes de publicar.
+- Automação: CI (GitHub Actions) para buildar e publicar no push é melhor que deploy manual; se o repo já tem um workflow, use-o. actionlint valida o YAML.
+- Publicar é uma ação externa e irreversível na prática (fica no ar): confirme com o usuário antes do deploy de produção, e relate a URL final e o que foi publicado. Nunca exponha segredos nos logs.
+- Ao descobrir o alvo, o comando e os segredos necessários do projeto, guarde com learn; se o deploy é recorrente, cristalize um comando ou skill com crystallize.

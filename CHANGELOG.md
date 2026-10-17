@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.18.1
+
+- A extensão e o terminal agora começam no modo auto, que usa sempre o modelo mais forte disponível. Antes começavam fixos no Nemotron Super.
+- O modo auto confere o catálogo da NVIDIA antes do primeiro pedido e não escolhe modelos que saíram dele. Quando um modelo responde que foi aposentado (erro 404 ou 410), ele sai da lista e o próximo mais forte assume sem interromper a tarefa. Com um modelo fixo, a reserva do mesmo provedor assume e o aposentado não volta nos pedidos seguintes.
+- O Kimi K3 saiu da lista de modelos (a NVIDIA o aposentou em 15/10/2026). O GLM 5.3 passa a ser o padrão.
+
+## 1.18.0
+
+Ferramentas, inteligência e aprendizado por experiência. Tudo entra sob demanda, para não pesar o contexto.
+
+- Sites, apps e sistemas:
+  - `web_scaffold` cria a base com 27 starters oficiais, sem perguntas: front-end/SPA (Vite com React, Vue, Svelte, Preact, Lit, Vanilla, e Solid), fullstack (Next, Nuxt, SvelteKit, React Router, Remix, Astro, Angular, SolidStart, Qwik, T3, Redwood), back-end (NestJS, Hono, Express), sites e docs (Docusaurus, Starlight, Hugo) e mobile/desktop (Expo, Electron, Tauri). Também adiciona Tailwind CSS ou shadcn/ui a um projeto existente.
+  - `generate` cria páginas, componentes, rotas, APIs e layouts dentro de um projeto existente, na convenção do framework detectado. Em Angular, Nuxt e NestJS delega ao gerador oficial; nos demais escreve um arquivo inicial correto, sem sobrescrever o que existe.
+  - Guias de front-end, back-end, design e deploy entram no contexto quando o assunto aparece.
+- Outras ferramentas que usam projetos famosos do GitHub:
+  - `motion_video`: animações e vídeos de apresentação com Remotion, Manim, Motion Canvas ou reveal.js.
+  - `code_quality`: ESLint, Prettier, Biome, Ruff, Semgrep e checagem de tipos do TypeScript. O modo check só relata; o modo fix corrige com aprovação.
+  - `reverse_engineer`: análise estática de binários com radare2/rizin, Ghidra headless, binwalk e binutils. Só leitura, nunca executa o binário.
+- Caixa de ferramentas: um catálogo pesquisável de mais de 270 CLIs do dia a dia do dev, incluindo agentes de código (aider, opencode, Codex CLI, Gemini CLI e outros). `toolbox` descobre a ferramenta certa e `toolbox_run` a executa.
+- Instalar sob demanda: quando falta um programa, `ensure_tool` instala pelo gerenciador do sistema (npm, pip/pipx, brew, apt, winget, choco, scoop, cargo, go e outros), sempre com aprovação, em vez de parar e pedir instalação manual.
+- Ferramentas gerais: `apply_patch` (diff unificado em vários arquivos), `run_tests` (descobre e roda a suíte, inclusive e2e com Playwright ou Cypress), `detect_stack`, `replace_in_files` (com prévia), `diff`, `json_query`, `hash`, `bench`, `serve` (servidor estático local), `archive` (zip com proteção contra path traversal) e `compute` (cálculo exato num sandbox).
+- Cérebro do projeto: o que o rfcode descobre sobre cada projeto (como buildar e testar, onde fica cada parte, armadilhas, causas de bugs) fica em `.rfcode/brain.json` e volta nas próximas conversas. Cada lição tem um peso que sobe quando ajuda e cai quando engana (`learn`, `recall`, `reflect`, `reinforce`). Não guarda segredos.
+- Aprende sozinho: quando uma ação falha e logo depois algo dá certo, o próprio fluxo lembra o agente de guardar a lição. Procedimentos repetidos podem virar um comando `/nome` ou uma skill com `crystallize`.
+- Raciocínio e pesquisa: `think` para pensar antes de agir em casos difíceis, `self_check` para conferir os critérios do pedido antes de concluir, e `deep_research` para buscar de vários ângulos e devolver um dossiê com fontes.
+- Os subagentes de pesquisa ganharam as ferramentas de leitura e cálculo novas.
+- Segurança: a detecção de programas externos não usa shell; os binários rodam direto, com os argumentos em lista.
+- docs/PLASTICIDADE.md explica como memória, raciocínio, ferramentas e reforço formam um ciclo de aprendizado.
+
 ## 1.17.1
 
 - Sem limite de passos: o agente (e os subagentes) seguem até terminar a tarefa, em vez de parar em 100 ações. A única trava é para quando o modelo empaca repetindo exatamente a mesma ação 6 vezes. `--max-steps` continua disponível para quem quiser um teto, e as missões seguem trabalhando em ciclos.

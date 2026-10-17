@@ -1,0 +1,9 @@
+# Como criar back-end, APIs e banco de dados
+- Escolha pela necessidade, não pela moda: API simples/edge -> Hono ou Fastify/Express; app com domínio rico e estrutura -> NestJS; fullstack com front junto -> as rotas de servidor do meta-framework (Next, SvelteKit, Nuxt); back-end "pronto" -> Supabase, PocketBase ou Convex. Use o que o projeto/time já adota.
+- Contrato primeiro: defina as rotas, os formatos de entrada/saída e os códigos de status antes de implementar. Valide toda entrada na borda (zod/valibot em TS, pydantic em Python) e nunca confie no cliente.
+- Banco e dados: comece pelo schema. Em TypeScript, Prisma ou Drizzle dão tipos e migrações; use migrações versionadas (nunca altere o banco à mão em produção) e seeds para dados de teste. Escreva consultas parametrizadas (jamais concatene SQL) e crie índices para os filtros/junções quentes.
+- Segurança inegociável: segredos em variáveis de ambiente (nunca no código nem no git; use http_request com {{NOME}}); senhas com hash forte (bcrypt/argon2), nunca em texto; autentique e autorize cada rota; CORS restrito; rate limit no que é público. Trate erros sem vazar stack trace nem dado sensível.
+- Confiabilidade: timeouts e retries com backoff nas chamadas externas; transações para operações que precisam ser atômicas; idempotência onde houver repetição (webhooks, pagamentos); logs estruturados e um /health.
+- Verifique de verdade: suba o serviço e exercite as rotas (toolbox_run com curl/http, ou run_tests). Confira o caminho feliz e os erros (400/401/404/500). Não diga "pronto" sem ter visto responder.
+- Aprenda o projeto: ao descobrir como rodar o servidor, migrar o banco e as convenções de rota, guarde com learn; se um fluxo se repete (criar um CRUD, uma migração), cristalize num comando com crystallize.
+- Se a API de uma lib/driver parecer diferente do que você lembra, confirme com deep_research/web antes de afirmar; não invente nomes de métodos nem flags de migração.

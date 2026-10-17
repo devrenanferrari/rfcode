@@ -141,7 +141,7 @@ class ChatViewProvider {
   }
 
   ensureAgent(apiKey = '') {
-    if (!this.agent) this.agent = new Agent({ apiKey, model: settings().get('model') || DEFAULT_MODEL, effort: settings().get('effort'), cwd: workspaceCwd(), saveSession: true, extraTools: VSCODE_TOOLS });
+    if (!this.agent) this.agent = new Agent({ apiKey, model: settings().get('model') || providers.AUTO, effort: settings().get('effort'), cwd: workspaceCwd(), saveSession: true, extraTools: VSCODE_TOOLS });
     return this.agent;
   }
 
@@ -197,7 +197,7 @@ class ChatViewProvider {
 
   async initMessage() {
     const cfg = loadConfig();
-    const model = this.agent?.selectedModel || settings().get('model') || DEFAULT_MODEL;
+    const model = this.agent?.selectedModel || settings().get('model') || providers.AUTO;
     const { provider } = providers.parseModel(model);
     const nv = (await this.context.secrets.get(SECRET_KEY)) || cfg.apiKey;
     const hasKey = model === providers.AUTO ? !!nv || providers.configuredProviders(cfg).length > 0
@@ -219,7 +219,7 @@ class ChatViewProvider {
     providers.detectLocal().then(async (local) => {
       this.localModels = local;
       if (local.length) {
-        const model = this.agent?.selectedModel || settings().get('model') || DEFAULT_MODEL;
+        const model = this.agent?.selectedModel || settings().get('model') || providers.AUTO;
         this.post({ type: 'models', model, models: await this.modelList(model, local) });
       }
     }).catch(() => {});
@@ -352,7 +352,7 @@ class ChatViewProvider {
           await this.setModel(pick);
           return info(pick === providers.AUTO ? 'Modelo: auto. O rfcode escolhe o melhor disponível e troca sozinho quando um atinge o limite de pedidos.' : `Modelo: ${pick}`);
         }
-        const sel = agent?.selectedModel || settings().get('model') || DEFAULT_MODEL;
+        const sel = agent?.selectedModel || settings().get('model') || providers.AUTO;
         return info(sel === providers.AUTO ? `Modelo atual: auto${agent ? ` (agora ${agent.model})` : ''}. Use /model <id> para fixar um modelo.` : `Modelo atual: ${sel}. Use /model <id> para trocar (ou /model auto).`);
       }
       case 'effort': {
@@ -452,7 +452,7 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
           return info(list.length ? `Modelos em ${providers.PROVIDERS[id].name} (${list.length}):\n${list.slice(0, 60).map((m) => '  ' + providers.formatModel(id, m)).join('\n')}${list.length > 60 ? '\n  ...' : ''}\nUse /model <id> para escolher.`
             : `Não consegui listar os modelos de ${providers.PROVIDERS[id].name}. Configure com /provider ${id}.`);
         }
-        const model = agent?.selectedModel || settings().get('model') || DEFAULT_MODEL;
+        const model = agent?.selectedModel || settings().get('model') || providers.AUTO;
         const list = await this.modelList(model);
         return info(`Modelos disponíveis:\n${list.map((m) => `  ${m.id}${m.desc ? '  (' + m.desc + ')' : ''}`).join('\n')}\nOutros provedores: /provider. Lista completa de um provedor: /models <provedor>.`);
       }
@@ -611,7 +611,7 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
       if (this.remote?.running && atts.length) this.remote.broadcast({ type: 'user', text: display || text, queued: true, attachments: this.attachmentsForRemote(atts) });
       return;
     }
-    const model = settings().get('model') || DEFAULT_MODEL;
+    const model = settings().get('model') || providers.AUTO;
     if (!(await this.ensureProvider(model))) {
       this.post({ type: 'error', text: 'Configure o provedor do modelo para usar o rfcode (/provider).' });
       this.post({ type: 'done' });
