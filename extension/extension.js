@@ -365,6 +365,11 @@ class ChatViewProvider {
         await this.setAuto(v);
         return info(`Aprovação automática ${v ? 'ligada' : 'desligada'}.`);
       }
+      case 'detalhes': {
+        const r = require('../lib/commands').detailsCommand(args, { on: !!this.context.globalState.get('showDetails'), notices: agent ? agent.notices : [] });
+        await this.context.globalState.update('showDetails', r.on);
+        return info(r.text);
+      }
       case 'undo': return info(agent ? agent.undo() : 'Nada para desfazer.');
       case 'plan':
         if (!args) return info('Use /plan <pedido>: o rfcode investiga e propõe um plano sem alterar nada; depois /go executa.');
@@ -847,7 +852,8 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
         const diff = ['write_file', 'edit_file', 'multi_edit'].includes(info.name);
         this.post({ type: 'approval', id: info.id, forced: !!info.forced, diff, rule: info.forced ? '' : suggestRule(info.name, info.args) });
       }),
-      onRetry: (t) => this.post({ type: 'info', text: t }),
+      // novas tentativas e trocas de modelo ficam ocultas (o agente guarda no log); /detalhes mostra
+      onRetry: (t) => { if (this.context.globalState.get('showDetails')) this.post({ type: 'info', text: t }); },
       onError: (t) => this.post({ type: 'error', text: t }),
       onAborted: () => this.post({ type: 'info', text: 'Interrompido.' }),
       onDone: () => this.post({ type: 'done' }),

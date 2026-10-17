@@ -66,6 +66,7 @@ Digite `/` no campo de mensagem para abrir a lista.
 | `/models [provedor]` | Lista os modelos disponíveis |
 | `/provider [provedor]` | Configura um provedor de modelos |
 | `/doctor` | Verifica o ambiente, as chaves e as ferramentas |
+| `/detalhes` | Mostra ou oculta os avisos técnicos (novas tentativas, trocas de modelo, falhas passageiras do provedor). Ficam ocultos por padrão |
 | `/auto` | Liga ou desliga a aprovação automática |
 | `/undo` | Desfaz a última alteração de arquivo |
 | `/plan <pedido>` | Investiga e propõe um plano sem alterar nada |
