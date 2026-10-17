@@ -1,83 +1,26 @@
 # Changelog
 
-## 1.27.1
-
-- Segurança: a detecção de programas (lib/tools/_exec.js) deixou de usar um shell. has() agora varre o PATH em Node puro e run() executa o binário direto com os argumentos em array, sem interpolação de shell, e recusa nomes com caracteres nulos ou quebras de linha. Remove o padrão apontado pelo CodeQL (comando de shell montado a partir de valores).
-
-## 1.27.0
-
-- Conhecimento de deploy: um guia (lib/guides/deploy.md) entra no contexto quando o assunto é publicar, e ensina a buildar antes, escolher o alvo (Vercel, Netlify, Cloudflare Pages/Workers, GitHub Pages, Fly), usar o CLI oficial via toolbox, preferir preview antes de produção, lidar com login interativo e confirmar o deploy de produção (ação externa).
-- Conhecimento de design/UI: um guia (lib/guides/design.md) entra no contexto quando o assunto é interface, e cobre espaçamento, tipografia, cor e tokens, componentes e estados, responsivo mobile-first, acessibilidade, movimento e feedback.
-- run_tests agora roda testes end-to-end (e2e: true): detecta o script test:e2e ou a configuração do Playwright/Cypress.
-- Catálogo com CLIs de auditoria e publicação: lighthouse, pa11y, gh-pages e surge.
-
-## 1.26.0
-
-- Geração dentro do projeto (generate): depois do esqueleto, cria páginas, componentes, rotas, APIs e layouts na convenção do framework detectado (Next, React/Vite, Vue, Svelte, Solid). Em Angular, Nuxt e NestJS delega ao gerador oficial (ng/nuxi/nest); nos demais escreve um arquivo inicial correto, sem sobrescrever o que existe.
-- Conhecimento de back-end: um guia (lib/guides/backend.md) entra no contexto quando o assunto é API, servidor ou banco, e ensina escolha de stack, contrato primeiro, schema e migrações, segurança (segredos, hash de senha, autorização, CORS, rate limit), confiabilidade e verificação.
-- Hábito vira skill: crystallize ganhou kind "skill", que cristaliza um procedimento rico num SKILL.md (com frontmatter e seções) que entra sozinho quando o pedido casa com a descrição e as keywords, além do comando /nome que já existia.
-- O modo de trabalho foi atualizado para usar generate em projetos web e para cristalizar procedimentos recorrentes como comando ou skill.
-
-## 1.25.0
-
-- Muito mais poder para front-end, sites e sistemas. O web_scaffold passou de 9 para 27 stacks oficiais, em cinco grupos: front-end/SPA (Vite com React, Vue, Svelte, Preact, Lit, Vanilla, e Solid), meta-frameworks/fullstack (Next, Nuxt, SvelteKit, React Router, Remix, Astro, Angular, SolidStart, Qwik, T3, Redwood), back-end (NestJS, Hono, Express), geradores de site e docs (Docusaurus, Starlight, Hugo) e mobile/desktop (Expo, Electron, Tauri). Os comandos de criação foram conferidos nas docs atuais, rodam sem interação (a entrada é fechada para não travar em prompts) e ainda adicionam Tailwind ou shadcn a um projeto existente.
-- Conhecimento de front-end: um guia (lib/guides/frontend.md) entra no contexto quando o assunto é web e ensina a escolher a stack pelo tipo de projeto, estruturar componentes e estado, estilo, acessibilidade, desempenho e verificação, e a guardar o que aprender com learn/crystallize.
-- Catálogo com mais CLIs de framework e sistema: Angular (ng), Nuxt (nuxi), NestJS (nest), Astro, Expo e EAS, Tauri, Prisma, Drizzle, Storybook, shadcn, Tailwind, Convex, PocketBase e Capacitor. Catálogo passou para mais de 260 programas.
-
-## 1.24.0
-
-- Aprende sozinho ao se recuperar de um erro: quando uma ação falha e logo em seguida algo dá certo, o rfcode é lembrado, ali no momento da recuperação, de guardar a lição no cérebro (com learn/reflect) para não repetir o mesmo erro. Antes dependia de o agente lembrar de fazer isso; agora o próprio fluxo puxa o aprendizado, uma vez por tarefa.
-- Cristaliza procedimentos repetidos em comandos (crystallize): quando um passo a passo se repete, ou o usuário pede um atalho, o rfcode o transforma num comando reutilizável (/nome) em .rfcode/commands, com aprovação. Hábito vira estrutura: na próxima vez é só chamar o comando.
-- docs/PLASTICIDADE.md atualizado: a captura automática do aprendizado e a promoção de hábito a comando deixam de ser "o que falta" e passam a existir.
-
-## 1.23.0
-
-- Aprendizado por experiência (plasticidade): o cérebro do projeto deixou de ser memória passiva e passou a se ajustar pelo resultado. Cada lição tem um peso; recuperar uma lição a reforça; reflect consolida no fim da tarefa o que funcionou e o que evitar; e reinforce fortalece o que ajudou e enfraquece (até esquecer) o que enganou. Assim o rfcode repete menos erros e chega mais rápido ao que funciona a cada conversa. O modo de trabalho foi atualizado para refletir no fim de tarefas com tentativa e erro.
-- Documento docs/PLASTICIDADE.md explicando como as capacidades (memória, raciocínio, repertório de ferramentas, reforço) formam um ciclo de aprendizado, e o que ainda falta.
-
-## 1.22.0
-
-- Catálogo atualizado com as ferramentas de código em alta no GitHub, incluindo uma categoria nova de IA e agentes de código: aider, opencode, Codex CLI, Gemini CLI, Claude Code, Crush, Goose, Continue, Qwen Code, llm, ShellGPT, mods, Ollama, repomix, code2prompt e files-to-prompt.
-- Também entraram ferramentas modernas e rápidas muito usadas hoje: oxlint (oxc), jj (Jujutsu), difftastic, gitui, lefthook, lazydocker, mise, devbox, dprint, typos, sccache, zed e fnm.
-- O catálogo passou de 224 para mais de 250 programas que o rfcode sabe descobrir e rodar sob demanda.
-
-## 1.21.0
-
-- Caixa de ferramentas com mais de 200 CLIs famosos: o rfcode agora conhece um catálogo de mais de 200 programas de linha de comando do dia a dia do dev (git e GitHub, JavaScript/TypeScript, Python, Go/Rust e outras linguagens, Docker e Kubernetes, nuvem, infraestrutura como código, bancos de dados, HTTP/rede, mídia e documentos, busca e texto, formatadores e linters, segurança e engenharia reversa, shell e release). Ele descobre a ferramenta certa com toolbox (por categoria ou busca) e roda com toolbox_run, que instala sob demanda pelo gerenciador do sistema (com aprovação) se faltar. Em vez de uma ferramenta embutida para cada programa (o que incharia o contexto), há um catálogo pesquisável e dois despachantes, como fazem o Claude Code e o Codex.
-- O modo de trabalho foi ajustado para consultar o catálogo quando o agente não lembra qual programa serve para uma tarefa, e preferir run_command para pipelines.
-
-## 1.20.0
-
-- Instalar sob demanda (ensure_tool): quando falta um programa externo (ffmpeg, radare2, jq, manim, ruff...), o rfcode instala sozinho pelo gerenciador certo do sistema (npm, pip/pipx, brew, apt, dnf, pacman, winget, choco, scoop, cargo, go), sempre com aprovação. Antes ele parava e mandava você instalar na mão; agora resolve igual Claude Code e Codex, mantendo o controle na sua mão. O modo de trabalho foi ajustado para preferir resolver com código e comando, e só instalar quando for mesmo necessário.
-- Novas ferramentas gerais:
-  - apply_patch: aplica um diff unificado em vários arquivos de uma vez, localizando o contexto mesmo se as linhas tiverem deslocado (como Claude Code e Codex).
-  - run_tests: descobre sozinho como o projeto roda os testes (npm/pnpm/yarn, cargo, go, pytest, make) e roda, resumindo o resultado.
-  - detect_stack: resume a stack do projeto (linguagens, gerenciador, scripts, frameworks, comandos de testar/buildar/rodar).
-  - replace_in_files: busca e substitui por regex em vários arquivos, com prévia antes de efetivar.
-  - diff: gera um diff unificado entre textos ou arquivos.
-  - json_query: lê um JSON e avalia uma expressão sobre ele num sandbox seguro.
-  - hash: calcula checksums (sha256, md5...) de arquivos ou texto.
-  - bench: mede o tempo de um comando em várias execuções.
-  - serve: sobe um servidor estático local para pré-visualizar um site/HTML, sem instalar nada.
-  - archive: compacta e extrai arquivos .zip, com proteção contra path traversal.
-- Os subagentes de pesquisa agora também podem usar detect_stack, diff, json_query e hash (tudo só leitura).
-
-## 1.19.0
-
-- Cérebro do projeto: o rfcode agora aprende sobre cada projeto ao longo das conversas. O que ele descobre sozinho (como buildar/rodar/testar, onde fica cada parte, armadilhas, a causa de um bug corrigido, comandos que funcionaram) fica em `.rfcode/brain.json` e volta no contexto das próximas conversas, deixando o agente mais rápido e certeiro. As ferramentas learn (guardar) e recall (consultar) são sempre disponíveis; o cérebro não guarda segredos. É diferente da memória de preferências do usuário e do RFCODE.md escrito por uma pessoa.
-- Raciocínio deliberado: a ferramenta think deixa o agente parar e pensar antes de decidir em casos difíceis (hipóteses, opções, riscos, decisão), e self_check monta uma checklist dos critérios do pedido para conferir item por item antes de concluir.
-- Pesquisa profunda: deep_research dispara várias buscas de ângulos diferentes sobre a mesma pergunta, junta e deduplica as fontes e devolve um dossiê com os melhores links para a resposta citar.
-- Cálculo exato: a ferramenta compute avalia expressões (aritmética, datas, porcentagens, estatística, transformação de listas) de forma determinística num sandbox sem acesso a arquivos, rede ou sistema, para o agente não errar contas.
-- O modo de trabalho do agente foi atualizado para usar essas capacidades: consultar o cérebro antes de investigar do zero, guardar lições duráveis, pensar antes de agir, calcular com exatidão e se autoverificar no fim.
-
 ## 1.18.0
 
-- Ferramentas que usam projetos famosos do GitHub, carregadas sob demanda quando o pedido fala do assunto:
-  - Sites (`web_scaffold`): cria a base de um site com os starters mais usados, sem perguntas: Vite, Next.js, Astro, SvelteKit e Remix, e adiciona Tailwind CSS ou shadcn/ui a um projeto existente.
-  - Vídeos de apresentação (`motion_video`): além do vídeo narrado nativo, cria e renderiza animações com Remotion (vídeo em React), Manim (animação em Python), Motion Canvas (TypeScript) ou reveal.js (slides em HTML).
-  - Qualidade de código (`code_quality`): roda ESLint, Prettier, Biome, Ruff, Semgrep e a checagem de tipos do TypeScript. O modo check só relata; o modo fix corrige e pede aprovação.
-  - Engenharia reversa (`reverse_engineer`): análise estática (só leitura, nunca executa o binário) com radare2 ou rizin, Ghidra headless, binwalk e as binutils (file, strings, nm, objdump) para informações, textos, símbolos, desmontagem e arquivos embutidos.
-- Cada ferramenta detecta se o programa está instalado e, quando falta, aponta o projeto no GitHub e como instalar.
+Ferramentas, inteligência e aprendizado por experiência. Tudo entra sob demanda, para não pesar o contexto.
+
+- Sites, apps e sistemas:
+  - `web_scaffold` cria a base com 27 starters oficiais, sem perguntas: front-end/SPA (Vite com React, Vue, Svelte, Preact, Lit, Vanilla, e Solid), fullstack (Next, Nuxt, SvelteKit, React Router, Remix, Astro, Angular, SolidStart, Qwik, T3, Redwood), back-end (NestJS, Hono, Express), sites e docs (Docusaurus, Starlight, Hugo) e mobile/desktop (Expo, Electron, Tauri). Também adiciona Tailwind CSS ou shadcn/ui a um projeto existente.
+  - `generate` cria páginas, componentes, rotas, APIs e layouts dentro de um projeto existente, na convenção do framework detectado. Em Angular, Nuxt e NestJS delega ao gerador oficial; nos demais escreve um arquivo inicial correto, sem sobrescrever o que existe.
+  - Guias de front-end, back-end, design e deploy entram no contexto quando o assunto aparece.
+- Outras ferramentas que usam projetos famosos do GitHub:
+  - `motion_video`: animações e vídeos de apresentação com Remotion, Manim, Motion Canvas ou reveal.js.
+  - `code_quality`: ESLint, Prettier, Biome, Ruff, Semgrep e checagem de tipos do TypeScript. O modo check só relata; o modo fix corrige com aprovação.
+  - `reverse_engineer`: análise estática de binários com radare2/rizin, Ghidra headless, binwalk e binutils. Só leitura, nunca executa o binário.
+- Caixa de ferramentas: um catálogo pesquisável de mais de 270 CLIs do dia a dia do dev, incluindo agentes de código (aider, opencode, Codex CLI, Gemini CLI e outros). `toolbox` descobre a ferramenta certa e `toolbox_run` a executa.
+- Instalar sob demanda: quando falta um programa, `ensure_tool` instala pelo gerenciador do sistema (npm, pip/pipx, brew, apt, winget, choco, scoop, cargo, go e outros), sempre com aprovação, em vez de parar e pedir instalação manual.
+- Ferramentas gerais: `apply_patch` (diff unificado em vários arquivos), `run_tests` (descobre e roda a suíte, inclusive e2e com Playwright ou Cypress), `detect_stack`, `replace_in_files` (com prévia), `diff`, `json_query`, `hash`, `bench`, `serve` (servidor estático local), `archive` (zip com proteção contra path traversal) e `compute` (cálculo exato num sandbox).
+- Cérebro do projeto: o que o rfcode descobre sobre cada projeto (como buildar e testar, onde fica cada parte, armadilhas, causas de bugs) fica em `.rfcode/brain.json` e volta nas próximas conversas. Cada lição tem um peso que sobe quando ajuda e cai quando engana (`learn`, `recall`, `reflect`, `reinforce`). Não guarda segredos.
+- Aprende sozinho: quando uma ação falha e logo depois algo dá certo, o próprio fluxo lembra o agente de guardar a lição. Procedimentos repetidos podem virar um comando `/nome` ou uma skill com `crystallize`.
+- Raciocínio e pesquisa: `think` para pensar antes de agir em casos difíceis, `self_check` para conferir os critérios do pedido antes de concluir, e `deep_research` para buscar de vários ângulos e devolver um dossiê com fontes.
+- Os subagentes de pesquisa ganharam as ferramentas de leitura e cálculo novas.
+- Segurança: a detecção de programas externos não usa shell; os binários rodam direto, com os argumentos em lista.
+- docs/PLASTICIDADE.md explica como memória, raciocínio, ferramentas e reforço formam um ciclo de aprendizado.
 
 ## 1.17.1
 
