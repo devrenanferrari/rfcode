@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.18.1
+
+- A extensão e o terminal agora começam no modo auto, que usa sempre o modelo mais forte disponível. Antes começavam fixos no Nemotron Super.
+- O modo auto confere o catálogo da NVIDIA antes do primeiro pedido e não escolhe modelos que saíram dele. Quando um modelo responde que foi aposentado (erro 404 ou 410), ele sai da lista e o próximo mais forte assume sem interromper a tarefa. Com um modelo fixo, a reserva do mesmo provedor assume e o aposentado não volta nos pedidos seguintes.
+- O Kimi K3 saiu da lista de modelos (a NVIDIA o aposentou em 15/10/2026). O GLM 5.3 passa a ser o padrão.
+
 ## 1.18.0
 
 Ferramentas, inteligência e aprendizado por experiência. Tudo entra sob demanda, para não pesar o contexto.

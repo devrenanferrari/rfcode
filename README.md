@@ -156,7 +156,9 @@ Exemplos: `groq:llama-3.3-70b-versatile`, `ollama:qwen3:8b`, `openrouter:openrou
 
 As chaves também podem vir de variáveis de ambiente (`OPENROUTER_API_KEY`, `GROQ_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `MISTRAL_API_KEY`, `CEREBRAS_API_KEY`, `GITHUB_TOKEN`, `HF_TOKEN`, `SAMBANOVA_API_KEY`, `COHERE_API_KEY`, `CLOUDFLARE_API_TOKEN`). Os limites gratuitos mudam com frequência; confira no site de cada provedor.
 
-Modelos da NVIDIA testados com as tarefas de referência do rfcode: `moonshotai/kimi-k3` (padrão, o mais eficiente), `nvidia/nemotron-3-super-120b-a12b` (rápido), `nvidia/nemotron-3-ultra-550b-a55b` (raciocínio), `z-ai/glm-5.3` (tarefas longas) e `nvidia/nemotron-3.5-lightning-30b-a3b` (tarefas simples). `/models nvidia` lista todos.
+O padrão é o modo `auto`: a cada pedido o rfcode usa o modelo mais forte disponível entre os provedores com chave, troca sozinho quando um atinge o limite de pedidos e descarta os modelos que o provedor aposentou (confere o catálogo da NVIDIA antes de começar). Com `/model <id>` você fixa um modelo; `/model auto` volta ao automático.
+
+Modelos da NVIDIA testados com as tarefas de referência do rfcode: `z-ai/glm-5.3` (o mais forte), `nvidia/nemotron-3-ultra-550b-a55b` (raciocínio), `nvidia/nemotron-3-super-120b-a12b` (rápido) e `nvidia/nemotron-3.5-lightning-30b-a3b` (tarefas simples). `/models nvidia` lista todos.
 
 ## Conversas e continuidade
 
@@ -177,7 +179,7 @@ A extensão inclui a versão de terminal: `Ctrl+Shift+P` → rfcode: Abrir no te
 
 | Configuração | Padrão | Descrição |
 |---|---|---|
-| `rfcode.model` | `nvidia/nemotron-3-super-120b-a12b` | Modelo usado |
+| `rfcode.model` | `auto` | Modelo usado. `auto` escolhe sempre o mais forte disponível |
 | `rfcode.autoApprove` | `false` | Aprova ações sem perguntar |
 | `rfcode.remotePort` | `7433` | Porta do controle remoto |
 

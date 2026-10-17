@@ -514,7 +514,7 @@ async function main() {
     const job = sched.list().find((j) => j.id === argv[si + 1]);
     if (!job) process.exit(1);
     process.chdir(job.cwd);
-    const agent = new Agent({ apiKey: cfg.apiKey || process.env.NVIDIA_API_KEY, model: job.model || cfg.model || DEFAULT_MODEL, effort: cfg.effort, cwd: job.cwd, saveSession: true });
+    const agent = new Agent({ apiKey: cfg.apiKey || process.env.NVIDIA_API_KEY, model: job.model || cfg.model || providers.AUTO, effort: cfg.effort, cwd: job.cwd, saveSession: true });
     agent.autoApprove = true;
     agent.interactive = false;
     let text = '', failed = '';
@@ -544,7 +544,7 @@ async function main() {
     const stamp = () => new Date().toLocaleTimeString('pt-BR');
     const m = await mission.run(process.cwd(), argv[ri + 1], {
       log: (t) => console.log(`[${stamp()}] ${t}`),
-      createAgent: ({ model }) => new Agent({ apiKey: cfg.apiKey || process.env.NVIDIA_API_KEY, model: model || cfg.model || DEFAULT_MODEL, effort: cfg.effort, cwd: process.cwd(), saveSession: true }),
+      createAgent: ({ model }) => new Agent({ apiKey: cfg.apiKey || process.env.NVIDIA_API_KEY, model: model || cfg.model || providers.AUTO, effort: cfg.effort, cwd: process.cwd(), saveSession: true }),
     });
     console.log(`[${stamp()}] fim: ${m.status}`);
     process.exit(0);
@@ -560,7 +560,7 @@ async function main() {
       const objetivo = argv.slice(1).filter((a) => a !== '--primeiro-plano').join(' ');
       let horas = 24; const o = objetivo.replace(/--horas[= ](\d+(?:[.,]\d+)?)/, (x, h) => { horas = Number(h.replace(',', '.')); return ''; }).trim();
       const m = mission.create(process.cwd(), { objetivo: o, horas, modelo: model });
-      const done = await mission.run(process.cwd(), m.id, { createAgent: ({ model: mm }) => new Agent({ apiKey: cfg.apiKey || process.env.NVIDIA_API_KEY, model: mm || model || DEFAULT_MODEL, effort: cfg.effort, cwd: process.cwd(), saveSession: true }) });
+      const done = await mission.run(process.cwd(), m.id, { createAgent: ({ model: mm }) => new Agent({ apiKey: cfg.apiKey || process.env.NVIDIA_API_KEY, model: mm || model || providers.AUTO, effort: cfg.effort, cwd: process.cwd(), saveSession: true }) });
       console.log(require('../lib/mission').status(process.cwd(), done.id));
       process.exit(done.status === 'concluida' ? 0 : 1);
     }
@@ -619,7 +619,7 @@ API key: ${CONFIG_FILE} ou variável de ambiente NVIDIA_API_KEY`);
     process.exit(r.status ?? 1);
   }
 
-  let model = cfg.model || DEFAULT_MODEL;
+  let model = cfg.model || providers.AUTO;
   const mi = argv.indexOf('--model');
   if (mi >= 0 && argv[mi + 1]) { model = argv[mi + 1]; argv.splice(mi, 2); }
   if (model.toLowerCase() === providers.AUTO) model = providers.AUTO;
@@ -641,7 +641,7 @@ API key: ${CONFIG_FILE} ou variável de ambiente NVIDIA_API_KEY`);
   const nothingConfigured = !apiKey && !providers.configuredProviders(cfg).length && ki < 0 && !argv.includes('-p');
   if (nothingConfigured) {
     console.log(`\n  ${T.bold('Bem-vindo ao rfcode.')} Para começar, escolha um provedor de IA. Todos abaixo têm uso gratuito:`);
-    console.log(`    ${T.lime('1')} NVIDIA ${T.muted('(recomendado: vários modelos, inclusive Kimi K3 e Nemotron)')}`);
+    console.log(`    ${T.lime('1')} NVIDIA ${T.muted('(recomendado: vários modelos, inclusive GLM e Nemotron)')}`);
     console.log(`    ${T.lime('2')} Outro provedor ${T.muted('(Groq, Gemini, Cerebras, GitHub Models, OpenRouter, Hugging Face, Ollama...)')}`);
     const a = ((await ask(`  1 ou 2 ${prompt()}`)) || '1').trim();
     if (a === '2') {

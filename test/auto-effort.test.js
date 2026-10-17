@@ -49,13 +49,13 @@ async function withServer(handler, fn) {
 
 test('candidatos do auto: sempre do mais forte ao mais fraco, entre todos os provedores com chave', () => {
   const nv = providers.autoCandidates({ keys: { nvidia: 'x' } });
-  assert.strictEqual(nv[0], 'moonshotai/kimi-k3');
+  assert.strictEqual(nv[0], 'z-ai/glm-5.3');
   assert.ok(nv.every((m) => !m.includes(':')), 'só NVIDIA quando só ela tem chave');
   assert.ok(nv.indexOf('openai/gpt-oss-20b') > nv.indexOf('nvidia/nemotron-3-super-120b-a12b'), 'os fracos ficam por último');
   // um provedor com modelo mais forte passa na frente da NVIDIA
   const mixed = providers.autoCandidates({ keys: { nvidia: 'x', anthropic: 'y', groq: 'z' } });
   assert.strictEqual(mixed[0], 'anthropic:claude-sonnet-5-5');
-  assert.strictEqual(mixed[1], 'moonshotai/kimi-k3');
+  assert.strictEqual(mixed[1], 'z-ai/glm-5.3');
   assert.ok(mixed.indexOf('groq:llama-3.3-70b-versatile') > mixed.indexOf('groq:openai/gpt-oss-120b'));
   assert.ok(!providers.autoCandidates({ keys: { openrouter: 'x' } }).includes('openrouter:openrouter/auto'), 'roteador de terceiros fica fora');
   assert.deepStrictEqual(providers.autoCandidates({ autoModels: ['groq:x', 'nvidia/y'], keys: { nvidia: 'k' } }), ['nvidia/y'], 'lista manual, sem os que não têm chave');
@@ -67,7 +67,7 @@ test('reasoning_effort só vai para modelos que aceitam, e nunca no médio', () 
   assert.strictEqual(body('groq:openai/gpt-oss-120b', 'low').reasoning_effort, 'low');
   assert.strictEqual(body('openai:gpt-5', 'low').reasoning_effort, 'low');
   assert.strictEqual(body('openai/gpt-oss-20b', 'medium').reasoning_effort, undefined);
-  assert.strictEqual(body('moonshotai/kimi-k3', 'high').reasoning_effort, undefined);
+  assert.strictEqual(body('z-ai/glm-5.3', 'high').reasoning_effort, undefined);
 });
 
 test('/effort entende português e inglês', () => {
@@ -148,4 +148,59 @@ test('esforço: provedor que recusa reasoning_effort recebe o pedido de novo sem
     await ag.send('de novo', { ...baseHooks(), onError: (e) => errors.push(e) });
     assert.strictEqual(bodies.length, 3, 'lembra que o modelo não aceita e não tenta mais');
   });
+});
+
+test('auto: modelo aposentado (410) sai da lista e o próximo assume, sem parar a tarefa', async () => {
+  const gone = { status: 410, json: { title: 'Gone', detail: "The model 'a' has reached its end of life" } };
+  await withServer((b) => (b.model === 'a' ? gone : null), async ({ home, bodies, writeConfig }) => {
+    writeConfig({ autoModels: ['custom:a', 'custom:b'] });
+    const { Agent } = require('../lib/agent');
+    const ag = new Agent({ model: 'auto', cwd: home });
+    const retries = [], errors = [], texts = [];
+    const h = { ...baseHooks(), onRetry: (m) => retries.push(m), onModel: noop, onText: (t) => texts.push(t), onError: (e) => errors.push(e) };
+    await ag.send('oi', h);
+    assert.deepStrictEqual(errors, []);
+    assert.strictEqual(texts.join(''), 'ok de b');
+    assert.ok(retries.some((m) => /custom:a não está mais disponível.*modo auto seguiu com custom:b/.test(m)));
+    await ag.send('de novo', h);
+    assert.deepStrictEqual(bodies.map((b) => b.model), ['a', 'b', 'b'], 'não volta a tentar o aposentado');
+  });
+});
+
+test('modelo fixo aposentado: segue com a reserva e não insiste nele nos próximos pedidos', async () => {
+  await withServer((b) => (b.model === 'a' ? { status: 404, json: { error: { message: 'model not found' } } } : null), async ({ home, bodies, writeConfig }) => {
+    writeConfig({ fallbackModels: ['custom:b'] });
+    const { Agent } = require('../lib/agent');
+    const ag = new Agent({ model: 'custom:a', cwd: home });
+    const errors = [], texts = [];
+    const h = { ...baseHooks(), onRetry: noop, onText: (t) => texts.push(t), onError: (e) => errors.push(e) };
+    await ag.send('oi', h);
+    await ag.send('de novo', h);
+    assert.deepStrictEqual(errors, []);
+    assert.deepStrictEqual(bodies.map((b) => b.model), ['a', 'b', 'b']);
+  });
+});
+
+test('auto: descarta os modelos da NVIDIA que sumiram do catálogo antes do primeiro pedido', async () => {
+  fs.writeFileSync(path.join(HOME, 'config.json'), JSON.stringify({ keys: { nvidia: 'nvapi-x' } }));
+  const { Agent } = require('../lib/agent');
+  const realList = providers.listModels;
+  const ids = providers.PROVIDERS.nvidia.models.map(([m]) => m);
+  try {
+    providers.listModels = async () => ids.slice(1); // o mais forte saiu do catálogo
+    const ag = new Agent({ model: 'auto', cwd: HOME });
+    assert.strictEqual(ag.model, ids[0]);
+    await ag.refreshAvailability();
+    assert.strictEqual(ag.autoPick(), ids[1]);
+    // catálogo vazio (offline) não descarta nada
+    providers.listModels = async () => [];
+    const ag2 = new Agent({ model: 'auto', cwd: HOME });
+    await ag2.refreshAvailability();
+    assert.strictEqual(ag2.autoPick(), ids[0]);
+  } finally { providers.listModels = realList; }
+});
+
+test('a extensão nasce no modo auto', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  assert.strictEqual(pkg.contributes.configuration.properties['rfcode.model'].default, 'auto');
 });
