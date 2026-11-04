@@ -1,5 +1,6 @@
 'use strict';
-// Extensão do VS Code: painel de chat do rfcode na barra lateral, comandos "/" e controle remoto pelo celular.
+// Extensão do VS Code: painel de chat do rfcode na barra lateral, comandos "/", controle remoto pelo celular
+// e a orquestra (várias sessões num quadro, no navegador).
 
 const vscode = require('vscode');
 const path = require('path');
@@ -66,7 +67,8 @@ class ChatViewProvider {
     this.remote = null;
     this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     this.status.command = 'rfcode.remote';
-    context.subscriptions.push(this.status, { dispose: () => this.remote?.stop() });
+    this.orquestra = null;
+    context.subscriptions.push(this.status, { dispose: () => this.remote?.stop() }, { dispose: () => this.stopOrquestra() });
   }
 
   // ---------- API key ----------
@@ -441,6 +443,7 @@ class ChatViewProvider {
 ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou use /memory <texto>.');
       }
       case 'remote': return this.remote?.running ? this.showRemote() : this.startRemote();
+      case 'orquestra': return this.openOrquestra();
       case 'key': return this.setApiKey();
       case 'chaves': return this.postLocal(await this.keysGuide());
       case 'provider': return this.setupProvider(args || undefined);
@@ -467,6 +470,33 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
         return this.post({ type: 'error', text: `Comando desconhecido: /${name}. Digite /help para ver a lista.` });
       }
     }
+  }
+
+  // ---------- orquestra: várias sessões num quadro, no navegador ----------
+  async openOrquestra() {
+    try {
+      if (!this.orquestra) {
+        const { Orquestra } = require('../lib/orquestra');
+        const { startOrquestra } = require('../lib/orquestra-server');
+        const apiKey = (await this.context.secrets.get(SECRET_KEY)) || loadConfig().apiKey || '';
+        const pastas = (vscode.workspace.workspaceFolders || []).map((f) => f.uri.fsPath);
+        this.orquestra = await startOrquestra({
+          pastas, version: VERSION,
+          orquestra: new Orquestra({ apiKey, model: settings().get('model') || providers.AUTO, effort: settings().get('effort') }),
+        });
+      }
+      await vscode.env.openExternal(vscode.Uri.parse(this.orquestra.url));
+      this.post({ type: 'info', text: `Orquestra aberta no navegador. Se não abriu: ${this.orquestra.url}\nO link tem um token de acesso: não compartilhe. Ela fica no ar enquanto o VS Code estiver aberto.` });
+    } catch (e) {
+      this.post({ type: 'error', text: `Não consegui abrir a orquestra: ${e.message}` });
+    }
+  }
+
+  stopOrquestra() {
+    if (!this.orquestra) return;
+    this.orquestra.orquestra.stopAll();
+    this.orquestra.server.stop();
+    this.orquestra = null;
   }
 
   // ---------- controle remoto ----------
@@ -886,6 +916,7 @@ function activate(context) {
       return provider.remote?.running ? provider.showRemote() : provider.startRemote();
     }),
     vscode.commands.registerCommand('rfcode.remoteStop', () => provider.stopRemote()),
+    vscode.commands.registerCommand('rfcode.orquestra', () => provider.openOrquestra()),
     vscode.commands.registerCommand('rfcode.openTerminal', () => {
       const term = vscode.window.createTerminal({ name: 'rfcode', cwd: workspaceCwd() });
       term.show();

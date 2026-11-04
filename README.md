@@ -26,6 +26,7 @@ Na primeira vez, o painel mostra como criar a chave gratuita da NVIDIA: entre em
 - Pré-visualização: sobe um servidor estático local para ver um site ou HTML, e compacta/extrai .zip sem instalar nada.
 - Entender código complexo: mapa de classes e funções em 12 linguagens, definição e referências, leitura de uma função só, grafo de dependências com impacto de cada mudança e busca por significado ("onde o desconto é calculado"). `/entender` explica a arquitetura de um projeto.
 - Missões: tarefas de horas ou dias em segundo plano, em ciclos com estado salvo, commits de segurança numa branch própria e retomada automática (`/missao`). Veja [docs/AUTOMACAO.md](docs/AUTOMACAO.md).
+- Orquestra: um quadro no navegador onde você puxa caixinhas (sessões de código, comandos e notas) e liga umas às outras. O que não está ligado roda em paralelo; o que está ligado roda em sequência, passando o resultado adiante. Conecta um ou vários repositórios, cada sessão pode trabalhar numa branch própria (git worktree) e as aprovações aparecem no próprio quadro (`rfcode orquestra` ou `/orquestra`). Veja [docs/ORQUESTRA.md](docs/ORQUESTRA.md).
 - Agendamentos: "dias úteis às 8h: resuma os pull requests" roda pelo agendador do sistema, mesmo com o rfcode fechado (`/agendar`).
 - Dashboards: painéis interativos em um único HTML (indicadores, gráficos, tabelas e filtros), abertos ao lado do chat ou no navegador.
 - Skills: procedimentos da empresa ensinados ao rfcode em SKILL.md, no mesmo formato do Claude Code (`/skills`).
@@ -78,6 +79,7 @@ Digite `/` no campo de mensagem para abrir a lista.
 | `/config` | Mostra toda a configuração e onde fica cada arquivo |
 | `/entender [foco]` | Estuda o projeto e explica a arquitetura e os fluxos principais |
 | `/missao <objetivo> [--horas 24]` | Tarefa longa e autônoma em segundo plano (`status`, `parar`, `retomar`) |
+| `/orquestra [pastas]` | Abre o quadro no navegador: várias sessões em paralelo ou em sequência, ligadas em fluxo |
 | `/agendar <quando>: <tarefa>` | Tarefa recorrente ou futura (`/agendamentos`, `/agendamento rodar\|remover <id>`) |
 | `/skills [criar <descrição>]` | Lista as skills ou pede ao rfcode para escrever uma |
 | `/uso` | Tokens usados hoje, na semana e no mês |
@@ -94,6 +96,21 @@ Comandos personalizados ficam em `.rfcode/commands/<nome>.md` (projeto) ou `~/.r
 description: Escreve testes para um arquivo
 Escreva testes para $ARGUMENTS seguindo o padrão do projeto e execute a suíte.
 ```
+
+## Orquestra
+
+![Orquestra: sessões em paralelo ligadas num quadro](docs/img/orquestra.png)
+
+Para tarefas que pedem várias frentes ao mesmo tempo: abra `rfcode orquestra` na pasta do projeto (ou `/orquestra` no painel, ou rfcode: Orquestra na paleta do VS Code). O navegador abre um quadro conectado ao repositório; dá para conectar outros pela barra de cima, de pastas do computador ou clonando do Git.
+
+- Puxe caixinhas da barra à esquerda: **Sessão** (o agente trabalha num repositório), **Comando** (testes, build, lint; o fluxo segue pelo código de saída) e **Nota** (texto compartilhado que as sessões ligadas leem e escrevem).
+- Arraste do ponto de saída de uma caixa até outra para ligar. Caixas ligadas rodam em sequência e a seguinte recebe o resultado da anterior; caixas soltas rodam em paralelo, até o limite escolhido em Paralelo (1 = tudo em sequência).
+- Cada ligação diz quando o fluxo segue: se der certo, se falhar ou sempre. Clique no rótulo para trocar. Exemplo: testes falharam → sessão que corrige; passaram → sessão que abre o PR.
+- Branch própria: a sessão trabalha numa git worktree, numa branch só dela, e as caixas seguintes do mesmo repositório continuam nessa branch. Ideal para várias sessões mexendo no mesmo repositório ao mesmo tempo.
+- Aprovações e perguntas aparecem no cartão da caixa e na conversa dela, que abre ao lado. Dá para mandar mensagens para uma sessão enquanto ela trabalha ou continuar a conversa depois.
+- Os quadros ficam salvos em `~/.rfcode/orquestra`. Comece do zero ou de um modelo pronto (paralelo + revisão; implementar, testar e corrigir; planejar, executar e revisar).
+
+O servidor só atende o próprio computador e o link carrega um token de acesso. `rfcode orquestra --rede` abre para a rede local. Detalhes em [docs/ORQUESTRA.md](docs/ORQUESTRA.md).
 
 ## Controle remoto
 
@@ -173,7 +190,7 @@ Modelos da NVIDIA testados com as tarefas de referência do rfcode: `z-ai/glm-5.
 
 ## Terminal
 
-A extensão inclui a versão de terminal: `Ctrl+Shift+P` → rfcode: Abrir no terminal. Os comandos `/` são os mesmos. Para executar uma tarefa e sair: `rfcode -p "tarefa"`.
+A extensão inclui a versão de terminal: `Ctrl+Shift+P` → rfcode: Abrir no terminal. Os comandos `/` são os mesmos. Para executar uma tarefa e sair: `rfcode -p "tarefa"`. Para abrir a orquestra: `rfcode orquestra [pastas...]`.
 
 ## Configurações
 

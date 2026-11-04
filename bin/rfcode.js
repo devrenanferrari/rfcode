@@ -346,6 +346,24 @@ async function handleCommand(state, cfg, line) {
       } catch (e) { console.log(c.red('  ' + e.message)); }
       return null;
     }
+    case 'orquestra': {
+      try {
+        const { openBrowser } = require('../lib/orquestra-server');
+        if (!state.orquestra) {
+          const { Orquestra } = require('../lib/orquestra');
+          const { startOrquestra } = require('../lib/orquestra-server');
+          // pastas com espaço: entre aspas
+          const pastas = arg ? [...arg.matchAll(/"([^"]+)"|(\S+)/g)].map((m) => path.resolve(agent.cwd, m[1] || m[2])) : [agent.cwd];
+          state.orquestra = await startOrquestra({ pastas, version: VERSION, orquestra: new Orquestra({ apiKey: agent.apiKey, model: agent.selectedModel, effort: agent.effort }) });
+          process.once('exit', () => { try { state.orquestra.orquestra.flush(); } catch { /* sem disco */ } });
+          for (const a of state.orquestra.avisos) console.log(`  ${c.yellow('!')} ${a}`);
+        }
+        console.log(`  ${c.bold('Orquestra')} ${c.dim('(sessões em paralelo ou em sequência, num quadro):')} ${T.lime(state.orquestra.url)}`);
+        console.log(c.dim('  O link tem um token de acesso: não compartilhe. Ela fica no ar enquanto este terminal estiver aberto.'));
+        openBrowser(state.orquestra.url);
+      } catch (e) { console.log(c.red(`  Não consegui abrir a orquestra: ${e.message}`)); }
+      return null;
+    }
     case 'entender': return { send: require('../lib/commands').UNDERSTAND_PROMPT(arg) };
     case 'commit': return { send: require('../lib/commands').COMMIT_PROMPT + (arg ? `\n\nInstruções do usuário: ${arg}` : '') };
     case 'pr': return { send: require('../lib/commands').PR_PROMPT + (arg ? `\n\nBranch base: ${arg}` : '') };
@@ -570,6 +588,33 @@ async function main() {
     process.exit(0);
   }
 
+  // orquestra: o quadro no navegador com várias sessões em paralelo ou em sequência
+  if (['orquestra', 'quadro', 'canvas', '--orquestra'].includes(argv[0])) {
+    const { Orquestra } = require('../lib/orquestra');
+    const { startOrquestra, openBrowser, DEFAULT_PORT } = require('../lib/orquestra-server');
+    const args = argv.slice(1);
+    const opt = (name) => { const i = args.indexOf(name); if (i < 0) return null; const v = args[i + 1]; args.splice(i, 2); return v; };
+    const flag = (name) => { const i = args.indexOf(name); if (i < 0) return false; args.splice(i, 1); return true; };
+    const port = Number(opt('--porta') || opt('--port')) || DEFAULT_PORT;
+    const rede = flag('--rede');
+    const noOpen = flag('--sem-navegador') || flag('--no-open');
+    const home = require('os').homedir();
+    const pastas = args.length ? args : (path.resolve(process.cwd()) !== path.resolve(home) ? [process.cwd()] : []);
+    const apiKey = cfg.apiKey || process.env.NVIDIA_API_KEY;
+    rl.close(); // sem prompt: Ctrl+C fecha a orquestra
+    const r = await startOrquestra({ pastas, port, rede, version: VERSION, orquestra: new Orquestra({ apiKey, model: cfg.model, effort: cfg.effort }) });
+    console.log(`\n  ${T.bold('rfcode orquestra')} ${T.muted(`(quadro "${r.quadro.nome}", ${r.quadro.repos.length} repositório${r.quadro.repos.length === 1 ? '' : 's'})`)}`);
+    console.log(`  ${T.lime(r.url)}`);
+    for (const a of r.avisos) console.log(`  ${T.amber('!')} ${a}`);
+    console.log(T.muted(`  O link tem um token de acesso: não compartilhe.${rede ? ' Aberto na rede local.' : ' Só este computador acessa.'}`));
+    console.log(T.muted('  Ctrl+C fecha a orquestra (as sessões em andamento param; os quadros ficam salvos).\n'));
+    if (!noOpen) openBrowser(r.url);
+    const bye = () => { r.orquestra.stopAll(); r.server.stop(); process.exit(0); };
+    process.on('SIGINT', bye);
+    process.on('SIGTERM', bye);
+    return;
+  }
+
   if (argv.includes('--help') || argv.includes('-h')) {
     console.log(`rfcode ${VERSION}
 Agente de IA para o terminal, com os modelos de build.nvidia.com.
@@ -583,6 +628,8 @@ Uso:
       --max-steps <n>      limita o número de ações
       git diff | rfcode -p "revise"   o que chega pela entrada padrão vira contexto
   rfcode missao "objetivo" --horas 24   tarefa longa e autônoma em segundo plano (status, parar, retomar)
+  rfcode orquestra [pastas...]   quadro no navegador: várias sessões em paralelo ou em sequência,
+      --porta <n>  --rede  --sem-navegador   ligadas em fluxo, em um ou mais repositórios
   rfcode -c, --continue    retoma a última conversa desta pasta
   rfcode --key             configura uma nova API key da NVIDIA
   rfcode --model <id>      usa outro modelo (ex.: groq:llama-3.3-70b-versatile, ollama:qwen3:8b)

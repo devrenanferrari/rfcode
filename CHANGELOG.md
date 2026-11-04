@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.19.0
+
+Orquestra: várias sessões de código num quadro, no navegador, em paralelo ou em sequência.
+
+- `rfcode orquestra [pastas...]` (ou `/orquestra` no painel e no terminal, ou rfcode: Orquestra na paleta do VS Code) abre um quadro no navegador conectado a um ou mais repositórios. Repositórios novos entram pela barra de cima, escolhendo a pasta ou clonando do Git.
+- Caixinhas puxadas da barra lateral: Sessão (o agente trabalha num repositório), Comando (testes, build, lint; o fluxo segue pelo código de saída) e Nota (texto que as sessões ligadas leem e escrevem com `nota_ler` e `nota_escrever`).
+- Ligações arrastadas de uma caixa para outra definem o fluxo. O que não está ligado roda em paralelo, até o limite do quadro (1 = em sequência); o que está ligado espera e recebe o resultado da caixa anterior como contexto. Cada ligação segue se der certo, se falhar ou sempre, o que permite caminhos como "testes falharam → corrigir".
+- Branch própria: a sessão trabalha numa git worktree, numa branch só dela; as caixas seguintes do mesmo repositório continuam nela, e a caixa que junta várias branches roda na pasta principal.
+- Aprovações, perguntas, plano, ações e saída dos comandos aparecem ao vivo no cartão e na conversa de cada caixa. Dá para mandar mensagens para uma sessão enquanto ela trabalha e continuar a conversa depois.
+- Três modelos prontos: paralelo + revisão; implementar, testar e corrigir; planejar, executar e revisar.
+- Quadros salvos em `~/.rfcode/orquestra`. O servidor só atende o próprio computador (com checagem do Host), exige o token do link em todo pedido e só abre para a rede local com `--rede`.
+
 ## 1.18.1
 
 - A extensão e o terminal agora começam no modo auto, que usa sempre o modelo mais forte disponível. Antes começavam fixos no Nemotron Super.
