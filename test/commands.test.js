@@ -133,3 +133,15 @@ test('servidor remoto: página pública, resto exige token', async () => {
     srv.stop();
   }
 });
+
+test('/detalhes alterna os avisos técnicos e mostra os recentes ao ligar', () => {
+  const { detailsCommand, parseCommand } = require('../lib/commands');
+  assert.strictEqual(parseCommand('/detail').name, 'detalhes');
+  const on = detailsCommand('', { on: false, notices: [{ at: Date.now(), text: 'Erro (HTTP 502). Tentando de novo em 2s...' }] });
+  assert.strictEqual(on.on, true);
+  assert.match(on.text, /Recentes:[\s\S]*HTTP 502/);
+  assert.strictEqual(detailsCommand('', { on: true }).on, false);
+  assert.strictEqual(detailsCommand('ligar', { on: true }).on, true);
+  assert.strictEqual(detailsCommand('desligar', { on: false }).on, false);
+  assert.match(detailsCommand('', { on: false }).text, /Nenhum aviso/);
+});

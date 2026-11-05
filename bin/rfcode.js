@@ -251,7 +251,8 @@ function cliHooks(state) {
       const summary = name === 'read_file' ? `${lines.length} linhas` : lines[0].slice(0, 140) + (lines.length > 1 ? ` (+${lines.length - 1} linhas)` : '');
       console.log(`    ${T.muted('⎿ ' + summary)}`);
     },
-    onRetry(msg) { spin.stop(); console.log(`  ${T.amber('↻')} ${T.muted(msg)}`); },
+    // novas tentativas e trocas de modelo ficam ocultas (o agente guarda no log); /detalhes mostra
+    onRetry(msg) { if (!state.showDetails) return; spin.stop(); console.log(`  ${T.amber('↻')} ${T.muted(msg)}`); },
     // modo auto: mostra o modelo só quando muda (o aviso de troca por limite já sai no onRetry)
     onModel(m) { if (m !== state.autoShown) { state.autoShown = m; spin.stop(); console.log(`  ${T.muted('auto · ' + m)}`); spin.start('pensando'); } },
     onError(msg) { spin.stop(); endText(); console.log(`\n  ${T.red('✗')} ${T.red(msg)}`); },
@@ -474,6 +475,13 @@ async function handleCommand(state, cfg, line) {
       agent.autoApprove = !agent.autoApprove;
       console.log(`Aprovação automática: ${agent.autoApprove ? c.green('ligada') : c.yellow('desligada')}`);
       return;
+    case 'detalhes': {
+      const r = require('../lib/commands').detailsCommand(arg, { on: state.showDetails, notices: agent.notices });
+      state.showDetails = r.on;
+      const c2 = loadConfig(); c2.showDetails = r.on; saveConfig(c2);
+      console.log(r.text);
+      return;
+    }
     case 'think':
       state.showThinking = !state.showThinking;
       console.log(`Mostrar raciocínio: ${state.showThinking ? 'sim' : 'não'}`);
@@ -702,7 +710,7 @@ API key: ${CONFIG_FILE} ou variável de ambiente NVIDIA_API_KEY`);
     console.log(`  ${T.amber('!')} ${T.muted(`falta a API key de ${providers.PROVIDERS[provider].name}: use /provider ${provider}`)}`);
   }
 
-  const state = { agent: new Agent({ apiKey, model, effort, cwd: process.cwd(), saveSession: true }), showThinking: false };
+  const state = { agent: new Agent({ apiKey, model, effort, cwd: process.cwd(), saveSession: true }), showThinking: false, showDetails: !!cfg.showDetails };
   liveAgent = state.agent;
   const hooks = cliHooks(state);
   // depois de cada resposta, mensagens que ficaram na fila (ex.: depois de Ctrl+C) viram o próximo pedido

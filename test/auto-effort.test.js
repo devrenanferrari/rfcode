@@ -162,6 +162,7 @@ test('auto: modelo aposentado (410) sai da lista e o próximo assume, sem parar 
     assert.deepStrictEqual(errors, []);
     assert.strictEqual(texts.join(''), 'ok de b');
     assert.ok(retries.some((m) => /custom:a não está mais disponível.*modo auto seguiu com custom:b/.test(m)));
+    assert.ok(ag.notices.some((n) => /não está mais disponível/.test(n.text) && n.at > 0), 'o aviso fica guardado para o /detalhes');
     await ag.send('de novo', h);
     assert.deepStrictEqual(bodies.map((b) => b.model), ['a', 'b', 'b'], 'não volta a tentar o aposentado');
   });

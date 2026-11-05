@@ -12,6 +12,10 @@ Orquestra: várias sessões de código num quadro, no navegador, em paralelo ou 
 - Três modelos prontos: paralelo + revisão; implementar, testar e corrigir; planejar, executar e revisar.
 - Quadros salvos em `~/.rfcode/orquestra`. O servidor só atende o próprio computador (com checagem do Host), exige o token do link em todo pedido e só abre para a rede local com `--rede`.
 
+## 1.18.2
+
+- Avisos técnicos ocultos por padrão: novas tentativas depois de uma falha passageira do provedor (como HTTP 502) e trocas de modelo não aparecem mais na conversa. O rfcode continua tentando em silêncio e só mostra um erro quando não consegue seguir. O comando /detalhes mostra os avisos recentes e liga ou desliga a exibição deles; a escolha fica salva. Os avisos também vão para o log.
+
 ## 1.18.1
 
 - A extensão e o terminal agora começam no modo auto, que usa sempre o modelo mais forte disponível. Antes começavam fixos no Nemotron Super.
