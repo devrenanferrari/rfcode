@@ -133,6 +133,20 @@ test('todos os modelos de quadro viram quadros válidos, com as ligações intac
   }
 });
 
+test('o pedido escrito ao criar o quadro entra nas caixas e nas notas do modelo', () => {
+  const rs = [{ id: 'r1' }];
+  const par = orq.fromTemplate('paralelo', rs, 'cupom de desconto no checkout');
+  assert.match(par.caixas.find((c) => c.titulo === 'Especificação').texto, /cupom de desconto no checkout/);
+  assert.strictEqual(orq.fromTemplate('ciclo', rs, 'login com Google').caixas.find((c) => c.titulo === 'Implementar').prompt, 'Implemente: login com Google');
+  // sem pedido fica o texto de exemplo, e o quadro não roda até ele ser trocado
+  const b = orq.normalizeBoard({ repos: [{ id: 'r1', caminho: '/x' }], ...orq.fromTemplate('paralelo', rs) });
+  const sessao = b.caixas.find((c) => c.titulo === 'Back-end');
+  assert.strictEqual(orq.pedidoPendente(b, [sessao.id]).titulo, 'Especificação', 'a nota ligada ainda tem o exemplo');
+  const nota = b.caixas.find((c) => c.tipo === 'nota');
+  nota.texto = 'cupom';
+  assert.strictEqual(orq.pedidoPendente(b, b.caixas.map((c) => c.id)), null);
+});
+
 test('buildPrompt junta o pedido, o resultado das etapas anteriores e as notas ligadas', () => {
   const b = orq.normalizeBoard({
     nome: 'Q', repos: [{ id: 'r1', caminho: '/x/app', nome: 'app' }],
@@ -399,7 +413,8 @@ test('"branch própria" cria uma worktree por caixa; a cadeia segue nela e a jun
       { id: 'b', titulo: 'Outra', prompt: 'b', isolar: true },
       { id: 'merge', prompt: 'merge' },
     ], [{ de: 'a', para: 't' }, { de: 't', para: 'fix', quando: 'sempre' }, { de: 'fix', para: 'merge' }, { de: 'b', para: 'merge' }]);
-    const done = finished(o, b.id);
+    // git worktree no Windows, com a suíte inteira rodando em paralelo, pode passar de 8 s
+    const done = finished(o, b.id, 60000);
     o.run(b.id);
     const end = await done;
     const by = Object.fromEntries(end.caixas.map((c) => [c.id, c]));
@@ -414,7 +429,7 @@ test('"branch própria" cria uma worktree por caixa; a cadeia segue nela e a jun
     const branches = execFileSync('git', ['branch', '--list', 'rfcode/*'], { cwd: work, encoding: 'utf8' });
     assert.strictEqual(branches.trim().split('\n').length, 2);
     // rodar de novo reaproveita a mesma worktree
-    const again = finished(o, b.id);
+    const again = finished(o, b.id, 60000);
     o.run(b.id, { ids: ['a'], modo: 'so' });
     assert.strictEqual((await again).caixas.find((c) => c.id === 'a').pasta, by.a.pasta);
   });
@@ -508,8 +523,14 @@ test('servidor: página, token, Host, arquivos permitidos e a API do quadro', as
       const repo = await request(p, 'POST', '/api/repos/verificar', { token, body: { caminho: work } });
       assert.strictEqual(repo.json.repo.caminho, path.resolve(work));
       assert.strictEqual((await request(p, 'POST', '/api/repos/verificar', { token, body: { caminho: 'x' } })).status, 400);
-      const created = await request(p, 'POST', '/api/quadros', { token, body: { nome: 'Q', modelo: 'revisao', repos: [repo.json.repo] } });
+      // modelo sem o pedido: o quadro é criado, mas não roda até a pessoa escrever o que quer
+      const semPedido = (await request(p, 'POST', '/api/quadros', { token, body: { nome: 'S', modelo: 'revisao', repos: [repo.json.repo] } })).json.quadro;
+      const recusado = await request(p, 'POST', `/api/quadros/${semPedido.id}/rodar`, { token, body: { modo: 'tudo' } });
+      assert.strictEqual(recusado.status, 400);
+      assert.match(recusado.json.erro, /Falta o pedido em "Planejar"/);
+      const created = await request(p, 'POST', '/api/quadros', { token, body: { nome: 'Q', modelo: 'revisao', repos: [repo.json.repo], pedido: 'uma loja de perfumes' } });
       const q = created.json.quadro;
+      assert.match(q.caixas.find((c) => c.titulo === 'Planejar').prompt, /para:\n\numa loja de perfumes\n/);
       assert.strictEqual(q.caixas.length, 4);
       const id = q.id;
       assert.strictEqual((await request(p, 'GET', `/api/quadros/${id}`, { token })).json.quadro.nome, 'Q');

@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.20.0
+
+Mais rápido, menos repetitivo e com o pensamento fora da conversa.
+
+- Pensamento recolhido, como no Claude Code: o texto que o modelo escreve entre uma ação e outra ("vou ler o arquivo X") não aparece mais como mensagem. As ações e esse raciocínio ficam num bloco só ("Trabalhando · 6 ações · Read(lib/agent.js)"), que vira "Pensou e fez 6 ações" ao terminar e abre com um clique. Frases repetidas aparecem uma vez. Pedidos de aprovação abrem o bloco sozinhos. Na conversa fica só a resposta.
+- O modelo foi instruído a usar esse espaço para raciocinar (o que já sabe, o que falta, por que a próxima ação), em vez de narrar, a investigar só o que o pedido precisa e a responder conversa simples sem ferramentas.
+- Freio de exploração: depois de 15 leituras seguidas sem agir, o rfcode lembra o modelo de parar de ler e fazer a mudança ou responder. Antes, modelos menores liam o projeto inteiro, arquivo por arquivo.
+- Modo auto mais rápido: a lista de modelos da NVIDIA foi conferida de novo. O GLM 5.3 e o Nemotron Super saíram do provedor e o Nemotron Ultra está aceitando pedidos sem responder. O padrão agora é o Mistral Large 4, que responde um "oi" em 2 a 4 segundos (antes, mais de 90).
+- Um modelo que trava, sai do provedor ou falha seguido fica fora por um tempo em todas as sessões (painel, cada caixa da orquestra, terminal e a próxima vez que o rfcode abrir), em vez de cada uma esperar para descobrir sozinha. Fica em ~/.rfcode/modelos-saude.json.
+- O limite para o provedor começar a responder caiu de 90 para 60 segundos.
+- Rodapé do chat: mostra o tamanho da conversa ("contexto 65% · 83 mil de 128 mil"). Antes mostrava a soma de todos os pedidos, que chegava a milhões de tokens porque cada passo reenvia a conversa inteira; esse total continua na dica do rodapé.
+- Orquestra: ao criar um quadro a partir de um modelo, o rfcode pergunta o que você quer fazer e já coloca o pedido nas caixas e nas notas. Um quadro com o texto de exemplo "(descreva o pedido aqui)" não roda mais: a caixa abre para você escrever o pedido. Antes, a sessão saía procurando o pedido pelo repositório.
+- Orquestra: avisos técnicos (nova tentativa, troca de modelo) não aparecem mais na conversa das caixas, como no painel.
+
 ## 1.19.0
 
 Orquestra: várias sessões de código num quadro, no navegador, em paralelo ou em sequência.

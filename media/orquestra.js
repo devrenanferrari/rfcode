@@ -161,8 +161,8 @@
     if (first && !local && S.q.caixas.length) requestAnimationFrame(fit);
   }
 
-  async function createBoard({ nome, modelo, repos }) {
-    const snap = await api('POST', '/api/quadros', { nome, modelo, repos });
+  async function createBoard({ nome, modelo, repos, pedido }) {
+    const snap = await api('POST', '/api/quadros', { nome, modelo, repos, pedido });
     S.quadros = (await api('GET', '/api/quadros')).quadros;
     applySnapshot(snap);
     store.set('rf-orq-q', snap.quadro.id);
@@ -723,6 +723,13 @@
     if (sem.length) {
       select({ tipo: 'caixa', id: sem[0].id });
       toast(`Escolha o repositório de "${sem[0].titulo}"${sem.length > 1 ? ` e de mais ${sem.length - 1}` : ''}.`, true);
+      return;
+    }
+    const exemplo = targets.find((c) => c.tipo === 'sessao' && String(c.prompt || '').includes(PEDIDO_VAZIO));
+    if (exemplo) {
+      select({ tipo: 'caixa', id: exemplo.id });
+      openDrawer(exemplo.id, 'config');
+      toast(`Falta o pedido em "${exemplo.titulo}": troque "${PEDIDO_VAZIO}" pelo que você quer que seja feito.`, true);
       return;
     }
     const vazio = targets.filter((c) => (c.tipo === 'sessao' && !String(c.prompt || '').trim()) || (c.tipo === 'comando' && !String(c.comando || '').trim()));
@@ -1360,21 +1367,24 @@
     const name = h('input', { class: 'inp', placeholder: 'Nome do quadro', spellcheck: 'false' });
     const keep = h('input', { type: 'checkbox' });
     keep.checked = true;
+    const pedido = h('textarea', { class: 'inp', rows: '3', placeholder: 'Ex.: uma página de loja de perfumes com catálogo, carrinho e checkout', spellcheck: 'false' });
+    const pedidoField = field('O que você quer fazer?', pedido);
     const grid = h('div', { class: 'tpls' });
-    const paint = () => grid.replaceChildren(...S.tpls.map((t) => h('button', { type: 'button', class: `tpl${tpl === t.id ? ' on' : ''}`, onclick: () => { tpl = t.id; paint(); } },
-      h('b', { text: t.nome }), h('span', { text: t.desc }))));
+    const paint = () => { pedidoField.classList.toggle('hidden', tpl === 'vazio'); grid.replaceChildren(...S.tpls.map((t) => h('button', { type: 'button', class: `tpl${tpl === t.id ? ' on' : ''}`, onclick: () => { tpl = t.id; paint(); } },
+      h('b', { text: t.nome }), h('span', { text: t.desc })))); };
     paint();
     const reuse = S.q && S.q.repos.length;
     const body = h('div', { class: 'mbody' },
       field('Nome', name),
       h('div', { class: 'field' }, h('span', { text: 'Começar com' }), grid),
+      pedidoField,
       reuse ? h('label', { class: 'tog' }, keep, h('b', { text: `Levar os repositórios deste quadro (${S.q.repos.map((r) => r.nome).join(', ')})` }), h('small', { text: 'As caixas do modelo já começam apontando para o primeiro.' })) : null);
     const create = h('button', { class: 'btn primary', type: 'button', text: 'Criar quadro' });
     create.addEventListener('click', async () => {
       create.disabled = true;
       try {
         const t = S.tpls.find((x) => x.id === tpl);
-        await createBoard({ nome: name.value.trim() || (t && tpl !== 'vazio' ? t.nome : 'Novo quadro'), modelo: tpl, repos: reuse && keep.checked ? S.q.repos : [] });
+        await createBoard({ nome: name.value.trim() || (t && tpl !== 'vazio' ? t.nome : 'Novo quadro'), modelo: tpl, repos: reuse && keep.checked ? S.q.repos : [], pedido: tpl === 'vazio' ? '' : pedido.value.trim() });
         closeModal();
       } catch (e) { toast(e.message, true); create.disabled = false; }
     });

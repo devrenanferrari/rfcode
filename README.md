@@ -176,7 +176,7 @@ As chaves também podem vir de variáveis de ambiente (`OPENROUTER_API_KEY`, `GR
 
 O padrão é o modo `auto`: a cada pedido o rfcode usa o modelo mais forte disponível entre os provedores com chave, troca sozinho quando um atinge o limite de pedidos e descarta os modelos que o provedor aposentou (confere o catálogo da NVIDIA antes de começar). Com `/model <id>` você fixa um modelo; `/model auto` volta ao automático.
 
-Modelos da NVIDIA testados com as tarefas de referência do rfcode: `z-ai/glm-5.3` (o mais forte), `nvidia/nemotron-3-ultra-550b-a55b` (raciocínio), `nvidia/nemotron-3-super-120b-a12b` (rápido) e `nvidia/nemotron-3.5-lightning-30b-a3b` (tarefas simples). `/models nvidia` lista todos.
+Modelos da NVIDIA conferidos em novembro de 2026: `mistralai/mistral-large-4-1t-a52b` (o padrão, forte e confiável com ferramentas), `stepfun-ai/step-5-preview` e `nvidia/nemotron-3-ultra-550b-a55b` (raciocínio), `nvidia/nemotron-3.5-super-vl-120b-a12b` (rápido, entende imagens) e `poolside/laguna-xs-2.1` (código, muito rápido). No modo auto, um modelo que não responde é pulado por 30 minutos em todas as sessões. `/models nvidia` lista todos.
 
 ## Conversas e continuidade
 

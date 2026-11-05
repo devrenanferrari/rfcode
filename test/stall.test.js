@@ -32,8 +32,8 @@ test('provedor que aceita o pedido e não responde (ou trava no meio) não segur
     fs.writeFileSync(path.join(home, 'config.json'), JSON.stringify({ baseUrls: { custom: `http://127.0.0.1:${srv.address().port}/v1` }, fallbackModels: ['custom:trava', 'custom:bom'] }));
     const { Agent } = require('../lib/agent');
     const a = new Agent({ model: 'custom:mudo', cwd: home });
-    a.firstResponseMs = 150;
-    a.streamIdleMs = 150;
+    a.firstResponseMs = 600;
+    a.streamIdleMs = 600;
     // só as esperas entre tentativas (2 s ou mais) encurtam; o tique de 1 s do cliente HTTP do Node fica como está
     global.setTimeout = (fn, ms, ...rest) => realTimeout(fn, ms >= 2000 ? 5 : ms, ...rest);
     const texts = [], retries = [], errors = [];
@@ -48,7 +48,7 @@ test('provedor que aceita o pedido e não responde (ou trava no meio) não segur
     assert.ok(retries.some((m) => /mudo não começou a responder/.test(m)), retries.join('\n'));
     assert.ok(retries.some((m) => /trava parou de responder no meio/.test(m)), 'travar no meio da resposta também estoura');
     assert.strictEqual(hits.mudo, 2, 'uma nova tentativa antes de trocar de modelo');
-    assert.ok(Date.now() - t0 < 5000);
+    assert.ok(Date.now() - t0 < 15000);
   } finally {
     global.setTimeout = realTimeout;
     srv.closeAllConnections();

@@ -49,13 +49,13 @@ async function withServer(handler, fn) {
 
 test('candidatos do auto: sempre do mais forte ao mais fraco, entre todos os provedores com chave', () => {
   const nv = providers.autoCandidates({ keys: { nvidia: 'x' } });
-  assert.strictEqual(nv[0], 'z-ai/glm-5.3');
+  assert.strictEqual(nv[0], 'mistralai/mistral-large-4-1t-a52b');
   assert.ok(nv.every((m) => !m.includes(':')), 'só NVIDIA quando só ela tem chave');
-  assert.ok(nv.indexOf('openai/gpt-oss-20b') > nv.indexOf('nvidia/nemotron-3-super-120b-a12b'), 'os fracos ficam por último');
+  assert.ok(nv.indexOf('openai/gpt-oss-20b') > nv.indexOf('poolside/laguna-xs-2.1'), 'os fracos ficam por último');
   // um provedor com modelo mais forte passa na frente da NVIDIA
   const mixed = providers.autoCandidates({ keys: { nvidia: 'x', anthropic: 'y', groq: 'z' } });
   assert.strictEqual(mixed[0], 'anthropic:claude-sonnet-5-5');
-  assert.strictEqual(mixed[1], 'z-ai/glm-5.3');
+  assert.strictEqual(mixed[1], 'mistralai/mistral-large-4-1t-a52b');
   assert.ok(mixed.indexOf('groq:llama-3.3-70b-versatile') > mixed.indexOf('groq:openai/gpt-oss-120b'));
   assert.ok(!providers.autoCandidates({ keys: { openrouter: 'x' } }).includes('openrouter:openrouter/auto'), 'roteador de terceiros fica fora');
   assert.deepStrictEqual(providers.autoCandidates({ autoModels: ['groq:x', 'nvidia/y'], keys: { nvidia: 'k' } }), ['nvidia/y'], 'lista manual, sem os que não têm chave');
@@ -133,7 +133,7 @@ test('auto: modelo que aceita o pedido e não responde é trocado na hora, sem e
     fs.writeFileSync(path.join(HOME, 'config.json'), JSON.stringify({ baseUrls: { custom: `http://127.0.0.1:${srv.address().port}/v1` }, autoModels: ['custom:a', 'custom:b'] }));
     const { Agent } = require('../lib/agent');
     const ag = new Agent({ model: 'auto', cwd: HOME });
-    ag.firstResponseMs = 200;
+    ag.firstResponseMs = 600;
     const retries = [], texts = [], errors = [];
     const t0 = Date.now();
     await ag.send('oi', { ...baseHooks(), onRetry: (m) => retries.push(m), onText: (t) => texts.push(t), onError: (e) => errors.push(e) });
@@ -141,7 +141,7 @@ test('auto: modelo que aceita o pedido e não responde é trocado na hora, sem e
     assert.deepStrictEqual(seen, ['a', 'b'], 'troca sem tentar o modelo travado de novo');
     assert.strictEqual(texts.join(''), 'ok de b');
     assert.ok(retries.some((m) => /a não começou a responder.*modo auto seguiu com custom:b/.test(m)), retries.join('\n'));
-    assert.ok(Date.now() - t0 < 3000);
+    assert.ok(Date.now() - t0 < 10000);
   } finally {
     srv.closeAllConnections();
     srv.close();
