@@ -1,5 +1,9 @@
 # Changelog
 
+## Não lançado
+
+- `rfcode visao`: agente de visão computacional. O celular lê um QR code, abre a câmera ao vivo e responde o que ela vê (questões de prova, exercícios, textos, telas, objetos) com os modelos de visão gratuitos da NVIDIA. Pergunta por texto ou voz, resposta lida em voz alta e modo automático que responde quando a câmera para numa pergunta nova. Roda em HTTPS na rede local com certificado gerado no PC, sem dependências.
+
 ## 1.18.1
 
 - A extensão e o terminal agora começam no modo auto, que usa sempre o modelo mais forte disponível. Antes começavam fixos no Nemotron Super.

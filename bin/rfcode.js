@@ -502,6 +502,49 @@ async function handleCommand(state, cfg, line) {
   return null;
 }
 
+// ---------- visão: câmera do celular + modelos de visão da NVIDIA ----------
+async function visionCommand(args, cfg) {
+  const vision = require('../lib/vision');
+  const opt = (...names) => { for (const n of names) { const i = args.indexOf(n); if (i >= 0 && args[i + 1]) return args[i + 1]; } return null; };
+  if (args.includes('--modelos')) {
+    console.log('Modelos de visão (tentados nesta ordem; o primeiro que responder é usado):');
+    for (const [id, desc] of vision.VISION_MODELS) console.log(`  ${id.padEnd(42)} ${desc}`);
+    return;
+  }
+  let key = cfg.apiKey || process.env.NVIDIA_API_KEY || '';
+  if (!key) key = await askApiKey(cfg);
+  const modelo = opt('--modelo', '--model');
+  const models = modelo ? [modelo, ...vision.VISION_MODELS.map((m) => m[0]).filter((m) => m !== modelo)] : undefined;
+  const server = new vision.VisionServer({
+    getKey: () => key,
+    models,
+    certDir: path.dirname(CONFIG_FILE),
+    onAsk: (r) => {
+      const hora = new Date().toLocaleTimeString('pt-BR');
+      if (r.error) console.log(`\n[${hora}] erro: ${r.error}`);
+      else console.log(`\n[${hora}] ${r.question ? `"${r.question}" ` : ''}${r.model.split('/').pop()} · ${(r.ms / 1000).toFixed(1)} s\n${r.answer.replace(/^/gm, '  ')}`);
+    },
+  });
+  const urls = await server.start(Number(opt('--porta', '--port')) || vision.DEFAULT_PORT);
+  if (!urls.length) { console.log('Nenhuma rede local encontrada. Conecte o PC ao Wi-Fi.'); process.exit(1); }
+  console.log(`\nrfcode visão: aponte a câmera do celular para este QR code (mesmo Wi-Fi do PC).\n`);
+  console.log(vision.qrTerminal(urls[0].url));
+  console.log(`\n  ${urls[0].url}`);
+  for (const u of urls.slice(1)) console.log(`  ${u.url}  (${u.name})`);
+  console.log(`
+Na primeira vez o celular avisa que a conexão não é particular: o certificado é do seu próprio PC.
+Toque em "Avançado" e depois em "Continuar" (no iPhone: "Mostrar detalhes" > "visitar o site"),
+e permita a câmera. Depois:
+  - botão verde: responde o que a câmera está vendo (questão, exercício, texto, objeto)
+  - campo de texto ou microfone: faz uma pergunta sobre a imagem
+  - Auto: responde sozinho quando você para a câmera numa pergunta nova
+  - Voz: lê a resposta em voz alta
+Se o celular não abrir a página, libere o Node.js no firewall para redes privadas.
+Ctrl+C para desligar.`);
+  await new Promise((resolve) => process.on('SIGINT', () => { server.stop(); console.log('\nVisão desligada.'); resolve(); }));
+  process.exit(0);
+}
+
 // ---------- main ----------
 async function main() {
   const argv = process.argv.slice(2);
@@ -530,6 +573,10 @@ async function main() {
     sched.recordRun(job.id, { inicio, fim: new Date().toISOString(), ok: !failed, saida: out });
     notifyDone(failed ? 'rfcode: tarefa agendada falhou' : 'rfcode: tarefa agendada concluída', job.task.slice(0, 120));
     process.exit(failed ? 1 : 0);
+  }
+  if (argv[0] === 'visao' || argv[0] === 'visão' || argv[0] === 'vision') {
+    await visionCommand(argv.slice(1), cfg);
+    return;
   }
   if (argv[0] === 'agendar' || argv[0] === 'agendamentos') {
     const r = require('../lib/commands').scheduleCommand(argv.slice(1).join(' '), { cwd: process.cwd(), model: cfg.model, srcRoot: path.join(__dirname, '..') });
@@ -583,6 +630,9 @@ Uso:
       --max-steps <n>      limita o número de ações
       git diff | rfcode -p "revise"   o que chega pela entrada padrão vira contexto
   rfcode missao "objetivo" --horas 24   tarefa longa e autônoma em segundo plano (status, parar, retomar)
+  rfcode visao             abre a câmera do celular (QR code) e responde o que ela vê com IA
+      --modelo <id>        modelo de visão preferido (--modelos lista os gratuitos da NVIDIA)
+      --porta <n>          porta do servidor (padrão 7443)
   rfcode -c, --continue    retoma a última conversa desta pasta
   rfcode --key             configura uma nova API key da NVIDIA
   rfcode --model <id>      usa outro modelo (ex.: groq:llama-3.3-70b-versatile, ollama:qwen3:8b)
