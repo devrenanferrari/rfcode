@@ -114,6 +114,40 @@ test('auto: limite de pedidos troca na hora para o próximo e volta ao melhor qu
   });
 });
 
+test('auto: modelo que aceita o pedido e não responde é trocado na hora, sem esperar minutos', async () => {
+  const seen = [];
+  const srv = http.createServer((q, r) => {
+    let b = '';
+    q.on('data', (d) => (b += d));
+    q.on('end', () => {
+      const m = JSON.parse(b).model;
+      seen.push(m);
+      if (m === 'a') return; // pendurado, como o NVIDIA às vezes fica
+      r.setHeader('content-type', 'text/event-stream');
+      r.write(`data: ${JSON.stringify({ choices: [{ delta: { content: `ok de ${m}` } }] })}\n\n`);
+      r.end('data: [DONE]\n\n');
+    });
+  });
+  await new Promise((ok) => srv.listen(0, ok));
+  try {
+    fs.writeFileSync(path.join(HOME, 'config.json'), JSON.stringify({ baseUrls: { custom: `http://127.0.0.1:${srv.address().port}/v1` }, autoModels: ['custom:a', 'custom:b'] }));
+    const { Agent } = require('../lib/agent');
+    const ag = new Agent({ model: 'auto', cwd: HOME });
+    ag.firstResponseMs = 200;
+    const retries = [], texts = [], errors = [];
+    const t0 = Date.now();
+    await ag.send('oi', { ...baseHooks(), onRetry: (m) => retries.push(m), onText: (t) => texts.push(t), onError: (e) => errors.push(e) });
+    assert.deepStrictEqual(errors, []);
+    assert.deepStrictEqual(seen, ['a', 'b'], 'troca sem tentar o modelo travado de novo');
+    assert.strictEqual(texts.join(''), 'ok de b');
+    assert.ok(retries.some((m) => /a não começou a responder.*modo auto seguiu com custom:b/.test(m)), retries.join('\n'));
+    assert.ok(Date.now() - t0 < 3000);
+  } finally {
+    srv.closeAllConnections();
+    srv.close();
+  }
+});
+
 test('auto: todos no limite espera o primeiro liberar em vez de desistir', async () => {
   let calls = 0;
   await withServer(() => (++calls <= 2 ? { status: 429, json: { error: { message: 'rate limit' } } } : null), async ({ home, writeConfig }) => {

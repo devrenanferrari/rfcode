@@ -12,6 +12,10 @@ Orquestra: várias sessões de código num quadro, no navegador, em paralelo ou 
 - Três modelos prontos: paralelo + revisão; implementar, testar e corrigir; planejar, executar e revisar.
 - Quadros salvos em `~/.rfcode/orquestra`. O servidor só atende o próprio computador (com checagem do Host), exige o token do link em todo pedido e só abre para a rede local com `--rede`.
 
+Correções:
+
+- Modelo que aceita o pedido e não responde não segura mais a tarefa por minutos. Antes, quando o provedor ficava calado, o rfcode só desistia depois de 5 minutos (e, no modo auto, tentava o mesmo modelo mais uma vez). Agora cada pedido tem até 90 s para começar a responder e até 2 min sem receber nada no meio da resposta; passou disso, o modo auto troca de modelo na hora e o modelo fixo tenta mais uma vez antes de ir para a reserva.
+
 ## 1.18.2
 
 - Avisos técnicos ocultos por padrão: novas tentativas depois de uma falha passageira do provedor (como HTTP 502) e trocas de modelo não aparecem mais na conversa. O rfcode continua tentando em silêncio e só mostra um erro quando não consegue seguir. O comando /detalhes mostra os avisos recentes e liga ou desliga a exibição deles; a escolha fica salva. Os avisos também vão para o log.

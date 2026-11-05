@@ -12,7 +12,14 @@ const orq = require('../lib/orquestra');
 const { OrquestraServer, startOrquestra, pageHtml } = require('../lib/orquestra-server');
 const { parseCommand } = require('../lib/commands');
 
-const cleanup = (dir) => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
+// No Windows, logo depois de um git worktree add o antivírus e o indexador ainda seguram arquivos da pasta
+// (EBUSY/EPERM), principalmente com a suíte inteira rodando em paralelo. É pasta temporária: tenta por alguns
+// segundos e, se continuar presa, deixa para o sistema limpar em vez de falhar um teste que já passou.
+const cleanup = (dir) => {
+  try { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 }); } catch (e) {
+    if (!['EBUSY', 'EPERM', 'ENOTEMPTY'].includes(e.code)) throw e;
+  }
+};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function withHome(fn) {
