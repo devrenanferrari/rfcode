@@ -27,6 +27,7 @@ Na primeira vez, o painel mostra como criar a chave gratuita da NVIDIA: entre em
 - Entender código complexo: mapa de classes e funções em 12 linguagens, definição e referências, leitura de uma função só, grafo de dependências com impacto de cada mudança e busca por significado ("onde o desconto é calculado"). `/entender` explica a arquitetura de um projeto.
 - Missões: tarefas de horas ou dias em segundo plano, em ciclos com estado salvo, commits de segurança numa branch própria e retomada automática (`/missao`). Veja [docs/AUTOMACAO.md](docs/AUTOMACAO.md).
 - Orquestra: um quadro no navegador onde você puxa caixinhas (sessões de código, comandos e notas) e liga umas às outras. O que não está ligado roda em paralelo; o que está ligado roda em sequência, passando o resultado adiante. Conecta um ou vários repositórios, cada sessão pode trabalhar numa branch própria (git worktree) e as aprovações aparecem no próprio quadro (`rfcode orquestra` ou `/orquestra`). Veja [docs/ORQUESTRA.md](docs/ORQUESTRA.md).
+- Visão: `rfcode visao` abre a câmera do celular por QR code e responde o que ela vê (questões, exercícios, textos, objetos) com os modelos de visão gratuitos da NVIDIA. Veja [Visão pela câmera do celular](#visão-pela-câmera-do-celular).
 - Agendamentos: "dias úteis às 8h: resuma os pull requests" roda pelo agendador do sistema, mesmo com o rfcode fechado (`/agendar`).
 - Dashboards: painéis interativos em um único HTML (indicadores, gráficos, tabelas e filtros), abertos ao lado do chat ou no navegador.
 - Skills: procedimentos da empresa ensinados ao rfcode em SKILL.md, no mesmo formato do Claude Code (`/skills`).
@@ -120,6 +121,16 @@ O servidor só atende o próprio computador e o link carrega um token de acesso.
 Execute `/remote` e leia o QR code com o celular conectado à mesma rede. O celular abre o mesmo painel do VS Code, com conversa, aprovações, plano, histórico e comandos sincronizados.
 
 O link contém um token de acesso e dá controle sobre o rfcode no computador. Não o compartilhe. Para desligar, use o botão Desligar no cartão ou o item rfcode remoto na barra de status. Na primeira vez, o Windows pode pedir permissão de rede; escolha Redes privadas.
+
+## Visão pela câmera do celular
+
+Rode `rfcode visao` no terminal e leia o QR code com o celular na mesma rede Wi-Fi. A câmera abre ao vivo no navegador do celular: aponte para uma questão de prova, um exercício, uma conta, um texto, uma tela ou um objeto e toque no botão verde. A resposta aparece na tela e pode ser lida em voz alta.
+
+- Pergunta opcional, digitada ou falada (microfone), sobre o que a câmera mostra. As últimas respostas ficam no contexto, então dá para pedir "explique melhor".
+- Modo Auto: quando você para a câmera numa pergunta nova, ele responde sozinho.
+- Usa os modelos de visão gratuitos da NVIDIA (Nemotron 3.5 Super VL e Llama 3.2 Vision 90B) com a mesma chave `nvapi-`. Se um modelo não estiver disponível ou bater no limite, o próximo assume. `rfcode visao --modelos` lista todos e `--modelo <id>` escolhe o preferido.
+
+O navegador só libera a câmera ao vivo em página segura, por isso o servidor roda em HTTPS com um certificado gerado no seu PC. Na primeira vez o celular avisa que a conexão não é particular: toque em Avançado e Continuar (no iPhone, Mostrar detalhes e visitar o site). A chave da NVIDIA fica no PC; o celular só envia a foto, e o link tem um token de acesso.
 
 ## Permissões
 
