@@ -327,7 +327,7 @@
   let menuItems = [], menuIndex = 0;
   const ALIAS = {};
   function parseCmd(text) {
-    const m = /^\/([a-z0-9_-]+)(?:\s+([\s\S]*))?$/i.exec(text.trim());
+    const m = /^\/([\p{L}0-9_-]+)(?:\s+([\s\S]*))?$/iu.exec(text.trim());
     if (!m) return null;
     const name = m[1].toLowerCase();
     return { name: ALIAS[name] || name, args: (m[2] || '').trim() };
@@ -335,7 +335,7 @@
   function closeMenu() { cmdMenu.classList.add('hidden'); menuItems = []; }
   function updateMenu() {
     const v = input.value;
-    const m = /^\/([a-z0-9_-]*)$/i.exec(v);
+    const m = /^\/([\p{L}0-9_-]*)$/iu.exec(v);
     if (!m || !commands.length) { closeMenu(); return; }
     const q = m[1].toLowerCase();
     menuItems = commands.filter((c) => c.name.startsWith(q) || (c.aliases || []).some((a) => a.startsWith(q)));
@@ -376,7 +376,7 @@
       closeMenu();
       if (cmd.name === 'help') return showHelp();
       if (cmd.name === 'history') return openHistory();
-      if (busy && !['model', 'effort', 'auto', 'remote', 'undo'].includes(cmd.name)) { note('info', 'Espere a resposta atual terminar para usar este comando.'); return; }
+      if (busy && !['model', 'effort', 'auto', 'remote', 'visao', 'undo'].includes(cmd.name)) { note('info', 'Espere a resposta atual terminar para usar este comando.'); return; }
       vscode.postMessage({ type: 'command', name: cmd.name, args: cmd.args });
       return;
     }
@@ -698,6 +698,31 @@
     scroll(true);
   }
 
+  function showVisionCard(m) {
+    log.querySelector('.vision-card')?.remove();
+    if (!m.on) { note('info', 'Câmera do celular desligada.'); return; }
+    hideWelcome();
+    const card = el('div', 'vision-card');
+    card.innerHTML = `<div class="rc-head"><b>Câmera do celular ligada</b></div>
+      <div class="rc-body"><div class="rc-qr">${m.qr}</div>
+      <div class="rc-info"><p>Leia o código com o celular <b>no mesmo Wi-Fi</b> deste PC, permita a câmera e toque no botão verde para a IA responder o que ela vê.</p>
+      <p>Na primeira vez o celular avisa que a conexão não é particular, porque o certificado é do seu próprio PC. Toque em Avançado e Continuar (no iPhone, Mostrar detalhes e visitar o site).</p>
+      <p class="rc-url"><code></code></p>
+      <p class="rc-warn">As fotos vão para a NVIDIA. Quem tiver este link usa a câmera com a sua chave. Não compartilhe.</p></div></div>
+      ${m.firewall === 'missing' ? `<div class="rc-fw">${I.warn}<div><b>O firewall do Windows está bloqueando o celular.</b> Clique em liberar: é criada uma regra só para a porta da câmera e só para a sua rede local. O Windows vai pedir confirmação de administrador.</div></div>` : ''}
+      <div class="rc-actions">${m.firewall === 'missing' ? '<button type="button" class="primary" data-a="fw">Liberar no firewall</button>' : ''}<button type="button" class="secondary" data-a="copy">Copiar link</button><button type="button" class="ghost" data-a="stop">Desligar</button></div>
+      ${m.firewall === 'n/a' ? '<button type="button" class="rc-help" data-a="fw">O celular não conecta? Liberar a porta no firewall do Windows</button>' : ''}`;
+    card.querySelector('.rc-url code').textContent = m.url;
+    card.addEventListener('click', (e) => {
+      const a = e.target.closest('button')?.dataset.a;
+      if (a === 'fw') { e.target.disabled = true; e.target.textContent = 'Aguardando a confirmação do Windows…'; vscode.postMessage({ type: 'visaoFirewall' }); }
+      if (a === 'copy') { vscode.postMessage({ type: 'copy', text: m.url }); e.target.textContent = 'Copiado'; }
+      if (a === 'stop') vscode.postMessage({ type: 'visaoStop' });
+    });
+    add(card);
+    scroll(true);
+  }
+
   // ---------- mensagens da extensão ----------
   function handle(m) {
     switch (m.type) {
@@ -781,6 +806,7 @@
         break;
       case 'mode': setMode(m.mode); break;
       case 'remote': showRemoteCard(m); break;
+      case 'visao': showVisionCard(m); break;
       case 'ask': askCard(m); break;
       case 'askDone': {
         const card = log.querySelector(`.ask-card[data-id="${m.id}"]`);

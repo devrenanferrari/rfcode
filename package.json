@@ -2,7 +2,7 @@
   "name": "rfcode",
   "displayName": "rfcode",
   "description": "Agente de IA para VS Code com os modelos gratuitos de build.nvidia.com. Edita código, executa testes, orquestra várias sessões em paralelo num quadro, pesquisa na web, gera documentos e vídeos e automatiza tarefas no Windows.",
-  "version": "1.21.0",
+  "version": "1.21.1",
   "publisher": "renanferrari",
   "license": "MIT",
   "repository": {
@@ -120,6 +120,17 @@
       {
         "command": "rfcode.remoteStop",
         "title": "Desligar controle remoto",
+        "category": "rfcode"
+      },
+      {
+        "command": "rfcode.visao",
+        "title": "Visão: câmera do celular",
+        "icon": "$(eye)",
+        "category": "rfcode"
+      },
+      {
+        "command": "rfcode.visaoStop",
+        "title": "Desligar câmera do celular",
         "category": "rfcode"
       },
       {

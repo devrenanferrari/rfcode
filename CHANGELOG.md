@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.21.1
+
+- `/visao` no painel da extensão (ou rfcode: Visão na paleta do VS Code): mostra o QR code da câmera do celular no próprio chat, com botão para liberar o firewall e para desligar. A barra de status avisa enquanto a câmera está ligada.
+- A liberação do firewall da câmera usa uma regra própria, sem mexer na do controle remoto.
+- Comandos do painel aceitam acento: `/visão` funciona.
+
 ## 1.21.0
 
 - `rfcode visao`: agente de visão computacional. O celular lê um QR code, abre a câmera ao vivo e responde o que ela vê (questões de prova, exercícios, textos, telas, objetos) com os modelos de visão gratuitos da NVIDIA. Pergunta por texto ou voz, resposta lida em voz alta e modo automático que responde quando a câmera para numa pergunta nova. Roda em HTTPS na rede local com certificado gerado no PC, sem dependências.

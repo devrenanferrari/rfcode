@@ -100,3 +100,11 @@ test('qrTerminal desenha o código com meio-blocos', () => {
   assert.ok(lines.every((l) => l.length === lines[0].length));
   assert.match(out, /[▀▄█]/);
 });
+
+test('/visao existe só no painel, com acento e sem acento', () => {
+  const { listCommands } = require('../lib/commands');
+  const ui = listCommands(tmp(), 'ui').find((c) => c.name === 'visao');
+  assert.ok(ui);
+  assert.ok(ui.aliases.includes('visão'));
+  assert.ok(!listCommands(tmp(), 'cli').some((c) => c.name === 'visao'));
+});

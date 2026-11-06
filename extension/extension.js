@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
-const { Agent, DEFAULT_MODEL, SUGGESTED_MODELS, loadConfig, saveConfig, validateKey, describeCall, previewCall } = require('../lib/agent');
+const { Agent, CONFIG_FILE, DEFAULT_MODEL, SUGGESTED_MODELS, loadConfig, saveConfig, validateKey, describeCall, previewCall } = require('../lib/agent');
 const { SessionManager, replayEvents, deleteSession } = require('../lib/sessions');
 const { listCommands, expandCustom, reviewFor, PLAN_PREFIX, GO_PROMPT, INIT_PROMPT } = require('../lib/commands');
 const { panelBody } = require('../lib/panel');
@@ -18,6 +18,7 @@ const providers = require('../lib/providers');
 const { runDoctor, formatDoctor } = require('../lib/doctor');
 const log = require('../lib/log');
 const VERSION = require('../package.json').version;
+const VISAO_RULE = 'rfcode visao'; // regra de firewall separada: liberar a câmera não derruba a do controle remoto
 const { remember, readUserMemory, userFile: memoryFile } = require('../lib/memory');
 
 // Diagnósticos do VS Code (erros e avisos do editor) como ferramenta do agente.
@@ -68,7 +69,13 @@ class ChatViewProvider {
     this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     this.status.command = 'rfcode.remote';
     this.orquestra = null;
-    context.subscriptions.push(this.status, { dispose: () => this.remote?.stop() }, { dispose: () => this.stopOrquestra() });
+    this.visao = null;
+    this.visaoKey = '';
+    this.visaoStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
+    this.visaoStatus.command = 'rfcode.visao';
+    this.visaoStatus.text = '$(eye) rfcode visão';
+    this.visaoStatus.tooltip = 'Câmera do celular ligada. Clique para ver o QR code ou desligar.';
+    context.subscriptions.push(this.status, this.visaoStatus, { dispose: () => this.remote?.stop() }, { dispose: () => this.visao?.stop() }, { dispose: () => this.stopOrquestra() });
   }
 
   // ---------- API key ----------
@@ -112,6 +119,7 @@ class ChatViewProvider {
     cfg.apiKey = key;
     saveConfig(cfg);
     if (this.agent) this.agent.apiKey = key;
+    this.visaoKey = key;
     this.post({ type: 'keyStatus', hasKey: true });
   }
 
@@ -297,6 +305,13 @@ class ChatViewProvider {
       case 'deleteSession':
         deleteSession(m.id);
         return this.sendHistory();
+      case 'visaoStop': return this.stopVisao();
+      case 'visaoFirewall': {
+        if (from !== 'local' || !this.visao) return undefined;
+        const r = await allowFirewall(this.visao.port, VISAO_RULE);
+        if (r === 'cancelled') this.postLocal({ type: 'info', text: 'Liberação do firewall cancelada. Sem ela o celular não consegue conectar.' });
+        return this.showVisao();
+      }
       case 'remoteStop': return this.stopRemote();
       case 'remoteFirewall': {
         if (from !== 'local' || !this.remote) return undefined;
@@ -448,6 +463,9 @@ class ChatViewProvider {
 ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou use /memory <texto>.');
       }
       case 'remote': return this.remote?.running ? this.showRemote() : this.startRemote();
+      case 'visao':
+        if (/^(parar|desligar|stop)$/i.test(args)) return this.stopVisao();
+        return this.visao?.running ? this.showVisao() : this.startVisao();
       case 'orquestra': return this.openOrquestra();
       case 'key': return this.setApiKey();
       case 'chaves': return this.postLocal(await this.keysGuide());
@@ -549,6 +567,47 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
     this.status.text = `$(device-mobile) rfcode remoto${n ? ` · ${n}` : ''}`;
     this.status.tooltip = 'Controle remoto do rfcode ligado. Clique para ver o QR code ou desligar.';
     this.status.show();
+  }
+
+  // ---------- visão: câmera do celular (mesmo servidor do "rfcode visao" no terminal) ----------
+  async startVisao() {
+    if (this.visaoStarting) return undefined;
+    this.visaoStarting = true;
+    try {
+      const key = await this.getApiKey();
+      if (!key) return undefined;
+      this.visaoKey = key;
+      const { VisionServer, DEFAULT_PORT: VISAO_PORT } = require('../lib/vision');
+      const server = new VisionServer({ getKey: () => this.visaoKey, certDir: path.dirname(CONFIG_FILE) });
+      await server.start(VISAO_PORT);
+      if (!server.addresses.length) {
+        server.stop();
+        return this.postLocal({ type: 'error', text: 'Não achei uma rede local (Wi-Fi ou cabo). Conecte o PC a uma rede e tente de novo.' });
+      }
+      this.visao = server;
+      this.visaoStatus.show();
+      return this.showVisao();
+    } catch (e) {
+      return this.postLocal({ type: 'error', text: 'Não consegui ligar a câmera: ' + e.message });
+    } finally {
+      this.visaoStarting = false;
+    }
+  }
+
+  showVisao() {
+    const urls = this.visao.urls();
+    return this.postLocal({
+      type: 'visao', on: true, url: urls[0].url, others: urls.slice(1).map((u) => u.url), qr: qrSvg(urls[0].url, { scale: 4 }),
+      firewall: firewallStatus(this.visao.port, VISAO_RULE),
+    });
+  }
+
+  stopVisao() {
+    if (!this.visao) return;
+    this.visao.stop();
+    this.visao = null;
+    this.visaoStatus.hide();
+    this.postLocal({ type: 'visao', on: false });
   }
 
   // ---------- histórico ----------
@@ -922,6 +981,11 @@ function activate(context) {
       return provider.remote?.running ? provider.showRemote() : provider.startRemote();
     }),
     vscode.commands.registerCommand('rfcode.remoteStop', () => provider.stopRemote()),
+    vscode.commands.registerCommand('rfcode.visao', async () => {
+      await vscode.commands.executeCommand('rfcode.chat.focus');
+      return provider.visao?.running ? provider.showVisao() : provider.startVisao();
+    }),
+    vscode.commands.registerCommand('rfcode.visaoStop', () => provider.stopVisao()),
     vscode.commands.registerCommand('rfcode.orquestra', () => provider.openOrquestra()),
     vscode.commands.registerCommand('rfcode.openTerminal', () => {
       const term = vscode.window.createTerminal({ name: 'rfcode', cwd: workspaceCwd() });

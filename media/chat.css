@@ -454,7 +454,7 @@ body:has(.history:not(.hidden)) footer { display: none; }
 }
 .mode-badge b { color: var(--rf-warn); }
 
-.help-card, .remote-card {
+.help-card, .remote-card, .vision-card {
   margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--rf-line); border-radius: var(--rf-radius); background: var(--rf-surface);
 }
 .help-title { font-weight: 650; margin-bottom: 6px; }
@@ -464,7 +464,7 @@ body:has(.history:not(.hidden)) footer { display: none; }
 .help-foot { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--rf-line); color: var(--rf-muted); font-size: 0.88em; }
 
 /* ---------- controle remoto ---------- */
-.remote-card { border-color: var(--rf-accent-line); }
+.remote-card, .vision-card { border-color: var(--rf-accent-line); }
 .rc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
 .rc-count { font-size: 0.85em; color: var(--rf-muted); }
 .rc-body { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }

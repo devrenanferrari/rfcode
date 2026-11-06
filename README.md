@@ -81,6 +81,7 @@ Digite `/` no campo de mensagem para abrir a lista.
 | `/config` | Mostra toda a configuração e onde fica cada arquivo |
 | `/entender [foco]` | Estuda o projeto e explica a arquitetura e os fluxos principais |
 | `/missao <objetivo> [--horas 24]` | Tarefa longa e autônoma em segundo plano (`status`, `parar`, `retomar`) |
+| `/visao [parar]` | Liga a câmera do celular por QR code; a IA responde o que ela vê |
 | `/orquestra [pastas]` | Abre o quadro no navegador: várias sessões em paralelo ou em sequência, ligadas em fluxo |
 | `/agendar <quando>: <tarefa>` | Tarefa recorrente ou futura (`/agendamentos`, `/agendamento rodar\|remover <id>`) |
 | `/skills [criar <descrição>]` | Lista as skills ou pede ao rfcode para escrever uma |
@@ -124,7 +125,7 @@ O link contém um token de acesso e dá controle sobre o rfcode no computador. N
 
 ## Visão pela câmera do celular
 
-Rode `rfcode visao` no terminal e leia o QR code com o celular na mesma rede Wi-Fi. A câmera abre ao vivo no navegador do celular: aponte para uma questão de prova, um exercício, uma conta, um texto, uma tela ou um objeto e toque no botão verde. A resposta aparece na tela e pode ser lida em voz alta.
+Use `/visao` no painel da extensão ou rode `rfcode visao` no terminal e leia o QR code com o celular na mesma rede Wi-Fi. A câmera abre ao vivo no navegador do celular: aponte para uma questão de prova, um exercício, uma conta, um texto, uma tela ou um objeto e toque no botão verde. A resposta aparece na tela e pode ser lida em voz alta.
 
 - Pergunta opcional, digitada ou falada (microfone), sobre o que a câmera mostra. As últimas respostas ficam no contexto, então dá para pedir "explique melhor".
 - Modo Auto: quando você para a câmera numa pergunta nova, ele responde sozinho.
