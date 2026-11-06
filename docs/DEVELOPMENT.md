@@ -33,6 +33,8 @@ lib/enterprise.js    política da TI, auditoria e hooks
 lib/mcp-oauth.js     login OAuth dos conectores remotos
 lib/code.js          inteligência de código (símbolos, referências, dependências, busca por significado)
 lib/mission.js       missões longas em ciclos
+lib/orquestra.js     orquestra: quadros, grafo das ligações e o executor das caixas (paralelo, sequência, worktrees)
+lib/orquestra-server.js  servidor HTTP da orquestra (API, SSE, token); a tela é media/orquestra.js e media/orquestra.css
 lib/schedule.js      tarefas agendadas (Agendador de Tarefas / cron)
 lib/dashboard.js     dashboards HTML interativos
 lib/skills.js        skills (SKILL.md)

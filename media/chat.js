@@ -49,6 +49,8 @@
 
   let busy = false;
   let current = null;      // { el, text, reasoning, body } da resposta em andamento
+  let ended = null;        // a última resposta encerrada: se vier uma ação logo depois, o texto dela era pensamento
+  let work = null;         // { el, list, n, thoughts } bloco recolhido com o pensamento e as ações do turno
   let spinner = null;
   const tools = new Map(); // id -> { card, body, name, cmdOut }
   let lastCmdTool = null;
@@ -103,6 +105,54 @@
     scroll(stick);
     return node;
   }
+  // ---------- pensamento e ações: um bloco recolhido, como "Pensou e fez N ações" ----------
+  // O texto que o modelo escreve junto com uma ação ("vou ler o arquivo X") é raciocínio de trabalho, não resposta:
+  // vai para dentro do bloco. Na conversa fica só a resposta final.
+  function workGroup() {
+    if (!work) {
+      const d = el('details', 'work', `<summary>${I.spark}<span class="wt">Trabalhando</span><span class="wn"></span><span class="wl"></span></summary><div class="wlist"></div>`);
+      work = { el: d, list: d.querySelector('.wlist'), n: 0, thoughts: [] };
+      add(d);
+    }
+    return work;
+  }
+  function workAdd(node) {
+    const stick = stickToBottom();
+    workGroup().list.appendChild(node);
+    if (spinner) log.appendChild(spinner);
+    scroll(stick);
+  }
+  function workLabel(label) {
+    if (!work) return;
+    work.el.querySelector('.wn').textContent = `${work.n} ${work.n === 1 ? 'ação' : 'ações'}`;
+    if (label != null) work.el.querySelector('.wl').textContent = label;
+  }
+  const sameThought = (a, b) => a.toLowerCase().replace(/[^a-z0-9à-ú]+/gi, ' ').trim() === b.toLowerCase().replace(/[^a-z0-9à-ú]+/gi, ' ').trim();
+  // move a resposta encerrada (texto e raciocínio) para dentro do bloco
+  function foldIntoWork(msg) {
+    if (!msg || !msg.el.isConnected) return;
+    const w = workGroup();
+    if (msg.reasoning) { msg.reasoning.querySelector('summary span').textContent = 'Raciocínio'; w.list.appendChild(msg.reasoning); }
+    const t = String(msg.text || '').trim();
+    if (t && !w.thoughts.slice(-4).some((x) => sameThought(x, t))) {
+      w.thoughts.push(t);
+      const d = el('div', 'thought md');
+      d.innerHTML = md(t);
+      w.list.appendChild(d);
+    }
+    msg.el.remove();
+  }
+  function closeWork() {
+    if (work) {
+      work.el.classList.add('done');
+      work.el.querySelector('.wt').textContent = work.n ? 'Pensou e fez' : 'Pensou';
+      work.el.querySelector('.wl').textContent = '';
+      workLabel();
+      if (!work.n) work.el.querySelector('.wn').textContent = '';
+    }
+    work = null;
+    ended = null;
+  }
   function note(kind, text) {
     const n = el('div', 'note ' + kind, (kind === 'error' ? I.warn : I.info) + '<span></span>');
     n.querySelector('span').textContent = text;
@@ -113,18 +163,19 @@
     if (n >= 1e6) return `${(n / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mi tokens`;
     return `${(n / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mil tokens`;
   }
-  // Status do rodapé: ocupação do contexto (o que importa para a conversa caber) e o total gasto.
+  // Status do rodapé: o tamanho atual da conversa (o que importa para ela caber no modelo).
+  // O total gasto (cada passo reenvia a conversa inteira, então passa de milhões rápido) fica só na dica.
   let ctxInfo = null;
   function statusText() {
     if (!tokens) return '';
-    if (!ctxInfo || !ctxInfo.window) return fmtTokens(tokens);
+    if (!ctxInfo || !ctxInfo.window) return '';
     const pct = Math.min(100, Math.round((ctxInfo.context / ctxInfo.window) * 100));
-    return `contexto ${pct}% · ${fmtTokens(tokens)}`;
+    return `contexto ${pct}% · ${fmtTokens(ctxInfo.context)} de ${fmtTokens(ctxInfo.window).replace(' tokens', '')}`;
   }
   function updateStatus() {
     statusEl.textContent = statusText();
     statusEl.title = ctxInfo && ctxInfo.window
-      ? `Contexto: ${Math.round(ctxInfo.context / 1000)} mil de ${Math.round(ctxInfo.window / 1000)} mil tokens. Acima de 65%, a parte antiga é resumida automaticamente.\nTotal gasto na conversa: ${tokens.toLocaleString('pt-BR')} tokens.`
+      ? `Contexto: ${Math.round(ctxInfo.context / 1000)} mil de ${Math.round(ctxInfo.window / 1000)} mil tokens. Acima de 65%, a parte antiga é resumida automaticamente.\nTotal processado pelo modelo nesta conversa (cada passo reenvia a conversa inteira): ${tokens.toLocaleString('pt-BR')} tokens. O /uso mostra o consumo por dia.`
       : '';
   }
   function setBusy(b) {
@@ -276,7 +327,7 @@
   let menuItems = [], menuIndex = 0;
   const ALIAS = {};
   function parseCmd(text) {
-    const m = /^\/([a-z0-9_-]+)(?:\s+([\s\S]*))?$/i.exec(text.trim());
+    const m = /^\/([\p{L}0-9_-]+)(?:\s+([\s\S]*))?$/iu.exec(text.trim());
     if (!m) return null;
     const name = m[1].toLowerCase();
     return { name: ALIAS[name] || name, args: (m[2] || '').trim() };
@@ -284,7 +335,7 @@
   function closeMenu() { cmdMenu.classList.add('hidden'); menuItems = []; }
   function updateMenu() {
     const v = input.value;
-    const m = /^\/([a-z0-9_-]*)$/i.exec(v);
+    const m = /^\/([\p{L}0-9_-]*)$/iu.exec(v);
     if (!m || !commands.length) { closeMenu(); return; }
     const q = m[1].toLowerCase();
     menuItems = commands.filter((c) => c.name.startsWith(q) || (c.aliases || []).some((a) => a.startsWith(q)));
@@ -325,7 +376,7 @@
       closeMenu();
       if (cmd.name === 'help') return showHelp();
       if (cmd.name === 'history') return openHistory();
-      if (busy && !['model', 'effort', 'auto', 'remote', 'undo'].includes(cmd.name)) { note('info', 'Espere a resposta atual terminar para usar este comando.'); return; }
+      if (busy && !['model', 'effort', 'auto', 'remote', 'visao', 'undo'].includes(cmd.name)) { note('info', 'Espere a resposta atual terminar para usar este comando.'); return; }
       vscode.postMessage({ type: 'command', name: cmd.name, args: cmd.args });
       return;
     }
@@ -647,6 +698,31 @@
     scroll(true);
   }
 
+  function showVisionCard(m) {
+    log.querySelector('.vision-card')?.remove();
+    if (!m.on) { note('info', 'Câmera do celular desligada.'); return; }
+    hideWelcome();
+    const card = el('div', 'vision-card');
+    card.innerHTML = `<div class="rc-head"><b>Câmera do celular ligada</b></div>
+      <div class="rc-body"><div class="rc-qr">${m.qr}</div>
+      <div class="rc-info"><p>Leia o código com o celular <b>no mesmo Wi-Fi</b> deste PC, permita a câmera e toque no botão verde para a IA responder o que ela vê.</p>
+      <p>Na primeira vez o celular avisa que a conexão não é particular, porque o certificado é do seu próprio PC. Toque em Avançado e Continuar (no iPhone, Mostrar detalhes e visitar o site).</p>
+      <p class="rc-url"><code></code></p>
+      <p class="rc-warn">As fotos vão para a NVIDIA. Quem tiver este link usa a câmera com a sua chave. Não compartilhe.</p></div></div>
+      ${m.firewall === 'missing' ? `<div class="rc-fw">${I.warn}<div><b>O firewall do Windows está bloqueando o celular.</b> Clique em liberar: é criada uma regra só para a porta da câmera e só para a sua rede local. O Windows vai pedir confirmação de administrador.</div></div>` : ''}
+      <div class="rc-actions">${m.firewall === 'missing' ? '<button type="button" class="primary" data-a="fw">Liberar no firewall</button>' : ''}<button type="button" class="secondary" data-a="copy">Copiar link</button><button type="button" class="ghost" data-a="stop">Desligar</button></div>
+      ${m.firewall === 'n/a' ? '<button type="button" class="rc-help" data-a="fw">O celular não conecta? Liberar a porta no firewall do Windows</button>' : ''}`;
+    card.querySelector('.rc-url code').textContent = m.url;
+    card.addEventListener('click', (e) => {
+      const a = e.target.closest('button')?.dataset.a;
+      if (a === 'fw') { e.target.disabled = true; e.target.textContent = 'Aguardando a confirmação do Windows…'; vscode.postMessage({ type: 'visaoFirewall' }); }
+      if (a === 'copy') { vscode.postMessage({ type: 'copy', text: m.url }); e.target.textContent = 'Copiado'; }
+      if (a === 'stop') vscode.postMessage({ type: 'visaoStop' });
+    });
+    add(card);
+    scroll(true);
+  }
+
   // ---------- mensagens da extensão ----------
   function handle(m) {
     switch (m.type) {
@@ -658,7 +734,7 @@
       case 'replay':
         closeHistory();
         log.innerHTML = '';
-        current = null; tools.clear(); hideSpinner(); tokens = 0; ctxInfo = null;
+        current = null; ended = null; work = null; tools.clear(); hideSpinner(); tokens = 0; ctxInfo = null;
         planEl.classList.add('hidden');
         for (const e of m.events) handle(e);
         scroll(true);
@@ -730,6 +806,7 @@
         break;
       case 'mode': setMode(m.mode); break;
       case 'remote': showRemoteCard(m); break;
+      case 'visao': showVisionCard(m); break;
       case 'ask': askCard(m); break;
       case 'askDone': {
         const card = log.querySelector(`.ask-card[data-id="${m.id}"]`);
@@ -756,7 +833,7 @@
       }
       case 'cleared':
         state.cwd = m.cwd || state.cwd;
-        current = null; tools.clear(); hideSpinner(); tokens = 0; ctxInfo = null;
+        current = null; ended = null; work = null; tools.clear(); hideSpinner(); tokens = 0; ctxInfo = null;
         planEl.classList.add('hidden');
         resetLog();
         setBusy(false);
@@ -790,6 +867,7 @@
         }
         setBusy(true);
         current = null;
+        closeWork();
         add(u);
         scroll(true);
         break;
@@ -818,15 +896,19 @@
         if (current) {
           if (current.reasoning) current.reasoning.querySelector('summary span').textContent = 'Raciocínio';
           if (!current.text && !current.reasoning) current.el.remove();
+          else ended = current;
         }
         current = null;
         break;
       case 'toolCall': {
         hideWelcome();
+        if (m.name !== 'ask_user') { foldIntoWork(ended || current); ended = null; current = null; }
         if (m.name === 'update_plan') { showSpinner('Planejando'); break; }
         if (m.name === 'ask_user') break; // o cartão da pergunta aparece no lugar // o plano aparece fixo acima do campo
         const t = toolCard(m);
-        add(t.card);
+        workAdd(t.card);
+        work.n++;
+        workLabel(m.label || m.name);
         tools.set(m.id, { ...t, name: m.name, cmdOut: null });
         if (m.name === 'run_command' || m.name === 'create_video') lastCmdTool = m.id;
         showSpinner('Executando');
@@ -838,6 +920,7 @@
         hideSpinner();
         t.card.classList.add('wait');
         t.card.classList.remove('collapsed');
+        t.card.closest('details.work')?.setAttribute('open', '');
         t.card.appendChild(approvalBox(m, t));
         scroll(true);
         break;
@@ -902,10 +985,11 @@
         updateStatus();
         break;
       case 'info': hideSpinner(); note('info', m.text); break;
-      case 'error': hideSpinner(); note('error', m.text); break;
+      case 'error': hideSpinner(); closeWork(); note('error', m.text); break;
       case 'done':
         hideSpinner();
         current = null;
+        closeWork();
         archivePlan();
         setBusy(false);
         input.focus();

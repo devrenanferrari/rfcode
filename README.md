@@ -26,6 +26,8 @@ Na primeira vez, o painel mostra como criar a chave gratuita da NVIDIA: entre em
 - Pré-visualização: sobe um servidor estático local para ver um site ou HTML, e compacta/extrai .zip sem instalar nada.
 - Entender código complexo: mapa de classes e funções em 12 linguagens, definição e referências, leitura de uma função só, grafo de dependências com impacto de cada mudança e busca por significado ("onde o desconto é calculado"). `/entender` explica a arquitetura de um projeto.
 - Missões: tarefas de horas ou dias em segundo plano, em ciclos com estado salvo, commits de segurança numa branch própria e retomada automática (`/missao`). Veja [docs/AUTOMACAO.md](docs/AUTOMACAO.md).
+- Orquestra: um quadro no navegador onde você puxa caixinhas (sessões de código, comandos e notas) e liga umas às outras. O que não está ligado roda em paralelo; o que está ligado roda em sequência, passando o resultado adiante. Conecta um ou vários repositórios, cada sessão pode trabalhar numa branch própria (git worktree) e as aprovações aparecem no próprio quadro (`rfcode orquestra` ou `/orquestra`). Veja [docs/ORQUESTRA.md](docs/ORQUESTRA.md).
+- Visão: `rfcode visao` abre a câmera do celular por QR code e responde o que ela vê (questões, exercícios, textos, objetos) com os modelos de visão gratuitos da NVIDIA. Veja [Visão pela câmera do celular](#visão-pela-câmera-do-celular).
 - Agendamentos: "dias úteis às 8h: resuma os pull requests" roda pelo agendador do sistema, mesmo com o rfcode fechado (`/agendar`).
 - Dashboards: painéis interativos em um único HTML (indicadores, gráficos, tabelas e filtros), abertos ao lado do chat ou no navegador.
 - Skills: procedimentos da empresa ensinados ao rfcode em SKILL.md, no mesmo formato do Claude Code (`/skills`).
@@ -66,6 +68,7 @@ Digite `/` no campo de mensagem para abrir a lista.
 | `/models [provedor]` | Lista os modelos disponíveis |
 | `/provider [provedor]` | Configura um provedor de modelos |
 | `/doctor` | Verifica o ambiente, as chaves e as ferramentas |
+| `/detalhes` | Mostra ou oculta os avisos técnicos (novas tentativas, trocas de modelo, falhas passageiras do provedor). Ficam ocultos por padrão |
 | `/auto` | Liga ou desliga a aprovação automática |
 | `/undo` | Desfaz a última alteração de arquivo |
 | `/plan <pedido>` | Investiga e propõe um plano sem alterar nada |
@@ -78,6 +81,8 @@ Digite `/` no campo de mensagem para abrir a lista.
 | `/config` | Mostra toda a configuração e onde fica cada arquivo |
 | `/entender [foco]` | Estuda o projeto e explica a arquitetura e os fluxos principais |
 | `/missao <objetivo> [--horas 24]` | Tarefa longa e autônoma em segundo plano (`status`, `parar`, `retomar`) |
+| `/visao [parar]` | Liga a câmera do celular por QR code; a IA responde o que ela vê |
+| `/orquestra [pastas]` | Abre o quadro no navegador: várias sessões em paralelo ou em sequência, ligadas em fluxo |
 | `/agendar <quando>: <tarefa>` | Tarefa recorrente ou futura (`/agendamentos`, `/agendamento rodar\|remover <id>`) |
 | `/skills [criar <descrição>]` | Lista as skills ou pede ao rfcode para escrever uma |
 | `/uso` | Tokens usados hoje, na semana e no mês |
@@ -95,6 +100,21 @@ description: Escreve testes para um arquivo
 Escreva testes para $ARGUMENTS seguindo o padrão do projeto e execute a suíte.
 ```
 
+## Orquestra
+
+![Orquestra: sessões em paralelo ligadas num quadro](docs/img/orquestra.png)
+
+Para tarefas que pedem várias frentes ao mesmo tempo: abra `rfcode orquestra` na pasta do projeto (ou `/orquestra` no painel, ou rfcode: Orquestra na paleta do VS Code). O navegador abre um quadro conectado ao repositório; dá para conectar outros pela barra de cima, de pastas do computador ou clonando do Git.
+
+- Puxe caixinhas da barra à esquerda: **Sessão** (o agente trabalha num repositório), **Comando** (testes, build, lint; o fluxo segue pelo código de saída) e **Nota** (texto compartilhado que as sessões ligadas leem e escrevem).
+- Arraste do ponto de saída de uma caixa até outra para ligar. Caixas ligadas rodam em sequência e a seguinte recebe o resultado da anterior; caixas soltas rodam em paralelo, até o limite escolhido em Paralelo (1 = tudo em sequência).
+- Cada ligação diz quando o fluxo segue: se der certo, se falhar ou sempre. Clique no rótulo para trocar. Exemplo: testes falharam → sessão que corrige; passaram → sessão que abre o PR.
+- Branch própria: a sessão trabalha numa git worktree, numa branch só dela, e as caixas seguintes do mesmo repositório continuam nessa branch. Ideal para várias sessões mexendo no mesmo repositório ao mesmo tempo.
+- Aprovações e perguntas aparecem no cartão da caixa e na conversa dela, que abre ao lado. Dá para mandar mensagens para uma sessão enquanto ela trabalha ou continuar a conversa depois.
+- Os quadros ficam salvos em `~/.rfcode/orquestra`. Comece do zero ou de um modelo pronto (paralelo + revisão; implementar, testar e corrigir; planejar, executar e revisar).
+
+O servidor só atende o próprio computador e o link carrega um token de acesso. `rfcode orquestra --rede` abre para a rede local. Detalhes em [docs/ORQUESTRA.md](docs/ORQUESTRA.md).
+
 ## Controle remoto
 
 <img src="docs/img/controle-remoto.png" width="380" alt="Cartão do controle remoto com QR code">
@@ -102,6 +122,16 @@ Escreva testes para $ARGUMENTS seguindo o padrão do projeto e execute a suíte.
 Execute `/remote` e leia o QR code com o celular conectado à mesma rede. O celular abre o mesmo painel do VS Code, com conversa, aprovações, plano, histórico e comandos sincronizados.
 
 O link contém um token de acesso e dá controle sobre o rfcode no computador. Não o compartilhe. Para desligar, use o botão Desligar no cartão ou o item rfcode remoto na barra de status. Na primeira vez, o Windows pode pedir permissão de rede; escolha Redes privadas.
+
+## Visão pela câmera do celular
+
+Use `/visao` no painel da extensão ou rode `rfcode visao` no terminal e leia o QR code com o celular na mesma rede Wi-Fi. A câmera abre ao vivo no navegador do celular: aponte para uma questão de prova, um exercício, uma conta, um texto, uma tela ou um objeto e toque no botão verde. A resposta aparece na tela e pode ser lida em voz alta.
+
+- Pergunta opcional, digitada ou falada (microfone), sobre o que a câmera mostra. As últimas respostas ficam no contexto, então dá para pedir "explique melhor".
+- Modo Auto: quando você para a câmera numa pergunta nova, ele responde sozinho.
+- Usa os modelos de visão gratuitos da NVIDIA (Nemotron 3.5 Super VL e Llama 3.2 Vision 90B) com a mesma chave `nvapi-`. Se um modelo não estiver disponível ou bater no limite, o próximo assume. `rfcode visao --modelos` lista todos e `--modelo <id>` escolhe o preferido.
+
+O navegador só libera a câmera ao vivo em página segura, por isso o servidor roda em HTTPS com um certificado gerado no seu PC. Na primeira vez o celular avisa que a conexão não é particular: toque em Avançado e Continuar (no iPhone, Mostrar detalhes e visitar o site). A chave da NVIDIA fica no PC; o celular só envia a foto, e o link tem um token de acesso.
 
 ## Permissões
 
@@ -158,7 +188,7 @@ As chaves também podem vir de variáveis de ambiente (`OPENROUTER_API_KEY`, `GR
 
 O padrão é o modo `auto`: a cada pedido o rfcode usa o modelo mais forte disponível entre os provedores com chave, troca sozinho quando um atinge o limite de pedidos e descarta os modelos que o provedor aposentou (confere o catálogo da NVIDIA antes de começar). Com `/model <id>` você fixa um modelo; `/model auto` volta ao automático.
 
-Modelos da NVIDIA testados com as tarefas de referência do rfcode: `z-ai/glm-5.3` (o mais forte), `nvidia/nemotron-3-ultra-550b-a55b` (raciocínio), `nvidia/nemotron-3-super-120b-a12b` (rápido) e `nvidia/nemotron-3.5-lightning-30b-a3b` (tarefas simples). `/models nvidia` lista todos.
+Modelos da NVIDIA conferidos em novembro de 2026: `mistralai/mistral-large-4-1t-a52b` (o padrão, forte e confiável com ferramentas), `stepfun-ai/step-5-preview` e `nvidia/nemotron-3-ultra-550b-a55b` (raciocínio), `nvidia/nemotron-3.5-super-vl-120b-a12b` (rápido, entende imagens) e `poolside/laguna-xs-2.1` (código, muito rápido). No modo auto, um modelo que não responde é pulado por 30 minutos em todas as sessões. `/models nvidia` lista todos.
 
 ## Conversas e continuidade
 
@@ -173,7 +203,7 @@ Modelos da NVIDIA testados com as tarefas de referência do rfcode: `z-ai/glm-5.
 
 ## Terminal
 
-A extensão inclui a versão de terminal: `Ctrl+Shift+P` → rfcode: Abrir no terminal. Os comandos `/` são os mesmos. Para executar uma tarefa e sair: `rfcode -p "tarefa"`.
+A extensão inclui a versão de terminal: `Ctrl+Shift+P` → rfcode: Abrir no terminal. Os comandos `/` são os mesmos. Para executar uma tarefa e sair: `rfcode -p "tarefa"`. Para abrir a orquestra: `rfcode orquestra [pastas...]`.
 
 ## Configurações
 

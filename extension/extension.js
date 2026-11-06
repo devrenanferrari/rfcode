@@ -1,12 +1,13 @@
 'use strict';
-// Extensão do VS Code: painel de chat do rfcode na barra lateral, comandos "/" e controle remoto pelo celular.
+// Extensão do VS Code: painel de chat do rfcode na barra lateral, comandos "/", controle remoto pelo celular
+// e a orquestra (várias sessões num quadro, no navegador).
 
 const vscode = require('vscode');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
-const { Agent, DEFAULT_MODEL, SUGGESTED_MODELS, loadConfig, saveConfig, validateKey, describeCall, previewCall } = require('../lib/agent');
+const { Agent, CONFIG_FILE, DEFAULT_MODEL, SUGGESTED_MODELS, loadConfig, saveConfig, validateKey, describeCall, previewCall } = require('../lib/agent');
 const { SessionManager, replayEvents, deleteSession } = require('../lib/sessions');
 const { listCommands, expandCustom, reviewFor, PLAN_PREFIX, GO_PROMPT, INIT_PROMPT } = require('../lib/commands');
 const { panelBody } = require('../lib/panel');
@@ -17,6 +18,7 @@ const providers = require('../lib/providers');
 const { runDoctor, formatDoctor } = require('../lib/doctor');
 const log = require('../lib/log');
 const VERSION = require('../package.json').version;
+const VISAO_RULE = 'rfcode visao'; // regra de firewall separada: liberar a câmera não derruba a do controle remoto
 const { remember, readUserMemory, userFile: memoryFile } = require('../lib/memory');
 
 // Diagnósticos do VS Code (erros e avisos do editor) como ferramenta do agente.
@@ -66,7 +68,14 @@ class ChatViewProvider {
     this.remote = null;
     this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     this.status.command = 'rfcode.remote';
-    context.subscriptions.push(this.status, { dispose: () => this.remote?.stop() });
+    this.orquestra = null;
+    this.visao = null;
+    this.visaoKey = '';
+    this.visaoStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
+    this.visaoStatus.command = 'rfcode.visao';
+    this.visaoStatus.text = '$(eye) rfcode visão';
+    this.visaoStatus.tooltip = 'Câmera do celular ligada. Clique para ver o QR code ou desligar.';
+    context.subscriptions.push(this.status, this.visaoStatus, { dispose: () => this.remote?.stop() }, { dispose: () => this.visao?.stop() }, { dispose: () => this.stopOrquestra() });
   }
 
   // ---------- API key ----------
@@ -110,6 +119,7 @@ class ChatViewProvider {
     cfg.apiKey = key;
     saveConfig(cfg);
     if (this.agent) this.agent.apiKey = key;
+    this.visaoKey = key;
     this.post({ type: 'keyStatus', hasKey: true });
   }
 
@@ -295,6 +305,13 @@ class ChatViewProvider {
       case 'deleteSession':
         deleteSession(m.id);
         return this.sendHistory();
+      case 'visaoStop': return this.stopVisao();
+      case 'visaoFirewall': {
+        if (from !== 'local' || !this.visao) return undefined;
+        const r = await allowFirewall(this.visao.port, VISAO_RULE);
+        if (r === 'cancelled') this.postLocal({ type: 'info', text: 'Liberação do firewall cancelada. Sem ela o celular não consegue conectar.' });
+        return this.showVisao();
+      }
       case 'remoteStop': return this.stopRemote();
       case 'remoteFirewall': {
         if (from !== 'local' || !this.remote) return undefined;
@@ -364,6 +381,11 @@ class ChatViewProvider {
         const v = !(agent ? agent.autoApprove : settings().get('autoApprove'));
         await this.setAuto(v);
         return info(`Aprovação automática ${v ? 'ligada' : 'desligada'}.`);
+      }
+      case 'detalhes': {
+        const r = require('../lib/commands').detailsCommand(args, { on: !!this.context.globalState.get('showDetails'), notices: agent ? agent.notices : [] });
+        await this.context.globalState.update('showDetails', r.on);
+        return info(r.text);
       }
       case 'undo': return info(agent ? agent.undo() : 'Nada para desfazer.');
       case 'plan':
@@ -441,6 +463,10 @@ class ChatViewProvider {
 ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou use /memory <texto>.');
       }
       case 'remote': return this.remote?.running ? this.showRemote() : this.startRemote();
+      case 'visao':
+        if (/^(parar|desligar|stop)$/i.test(args)) return this.stopVisao();
+        return this.visao?.running ? this.showVisao() : this.startVisao();
+      case 'orquestra': return this.openOrquestra();
       case 'key': return this.setApiKey();
       case 'chaves': return this.postLocal(await this.keysGuide());
       case 'provider': return this.setupProvider(args || undefined);
@@ -467,6 +493,33 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
         return this.post({ type: 'error', text: `Comando desconhecido: /${name}. Digite /help para ver a lista.` });
       }
     }
+  }
+
+  // ---------- orquestra: várias sessões num quadro, no navegador ----------
+  async openOrquestra() {
+    try {
+      if (!this.orquestra) {
+        const { Orquestra } = require('../lib/orquestra');
+        const { startOrquestra } = require('../lib/orquestra-server');
+        const apiKey = (await this.context.secrets.get(SECRET_KEY)) || loadConfig().apiKey || '';
+        const pastas = (vscode.workspace.workspaceFolders || []).map((f) => f.uri.fsPath);
+        this.orquestra = await startOrquestra({
+          pastas, version: VERSION,
+          orquestra: new Orquestra({ apiKey, model: settings().get('model') || providers.AUTO, effort: settings().get('effort') }),
+        });
+      }
+      await vscode.env.openExternal(vscode.Uri.parse(this.orquestra.url));
+      this.post({ type: 'info', text: `Orquestra aberta no navegador. Se não abriu: ${this.orquestra.url}\nO link tem um token de acesso: não compartilhe. Ela fica no ar enquanto o VS Code estiver aberto.` });
+    } catch (e) {
+      this.post({ type: 'error', text: `Não consegui abrir a orquestra: ${e.message}` });
+    }
+  }
+
+  stopOrquestra() {
+    if (!this.orquestra) return;
+    this.orquestra.orquestra.stopAll();
+    this.orquestra.server.stop();
+    this.orquestra = null;
   }
 
   // ---------- controle remoto ----------
@@ -514,6 +567,47 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
     this.status.text = `$(device-mobile) rfcode remoto${n ? ` · ${n}` : ''}`;
     this.status.tooltip = 'Controle remoto do rfcode ligado. Clique para ver o QR code ou desligar.';
     this.status.show();
+  }
+
+  // ---------- visão: câmera do celular (mesmo servidor do "rfcode visao" no terminal) ----------
+  async startVisao() {
+    if (this.visaoStarting) return undefined;
+    this.visaoStarting = true;
+    try {
+      const key = await this.getApiKey();
+      if (!key) return undefined;
+      this.visaoKey = key;
+      const { VisionServer, DEFAULT_PORT: VISAO_PORT } = require('../lib/vision');
+      const server = new VisionServer({ getKey: () => this.visaoKey, certDir: path.dirname(CONFIG_FILE) });
+      await server.start(VISAO_PORT);
+      if (!server.addresses.length) {
+        server.stop();
+        return this.postLocal({ type: 'error', text: 'Não achei uma rede local (Wi-Fi ou cabo). Conecte o PC a uma rede e tente de novo.' });
+      }
+      this.visao = server;
+      this.visaoStatus.show();
+      return this.showVisao();
+    } catch (e) {
+      return this.postLocal({ type: 'error', text: 'Não consegui ligar a câmera: ' + e.message });
+    } finally {
+      this.visaoStarting = false;
+    }
+  }
+
+  showVisao() {
+    const urls = this.visao.urls();
+    return this.postLocal({
+      type: 'visao', on: true, url: urls[0].url, others: urls.slice(1).map((u) => u.url), qr: qrSvg(urls[0].url, { scale: 4 }),
+      firewall: firewallStatus(this.visao.port, VISAO_RULE),
+    });
+  }
+
+  stopVisao() {
+    if (!this.visao) return;
+    this.visao.stop();
+    this.visao = null;
+    this.visaoStatus.hide();
+    this.postLocal({ type: 'visao', on: false });
   }
 
   // ---------- histórico ----------
@@ -847,7 +941,8 @@ ${mem}` : 'A memória ainda está vazia. Diga "lembre que..." numa conversa, ou 
         const diff = ['write_file', 'edit_file', 'multi_edit'].includes(info.name);
         this.post({ type: 'approval', id: info.id, forced: !!info.forced, diff, rule: info.forced ? '' : suggestRule(info.name, info.args) });
       }),
-      onRetry: (t) => this.post({ type: 'info', text: t }),
+      // novas tentativas e trocas de modelo ficam ocultas (o agente guarda no log); /detalhes mostra
+      onRetry: (t) => { if (this.context.globalState.get('showDetails')) this.post({ type: 'info', text: t }); },
       onError: (t) => this.post({ type: 'error', text: t }),
       onAborted: () => this.post({ type: 'info', text: 'Interrompido.' }),
       onDone: () => this.post({ type: 'done' }),
@@ -886,6 +981,12 @@ function activate(context) {
       return provider.remote?.running ? provider.showRemote() : provider.startRemote();
     }),
     vscode.commands.registerCommand('rfcode.remoteStop', () => provider.stopRemote()),
+    vscode.commands.registerCommand('rfcode.visao', async () => {
+      await vscode.commands.executeCommand('rfcode.chat.focus');
+      return provider.visao?.running ? provider.showVisao() : provider.startVisao();
+    }),
+    vscode.commands.registerCommand('rfcode.visaoStop', () => provider.stopVisao()),
+    vscode.commands.registerCommand('rfcode.orquestra', () => provider.openOrquestra()),
     vscode.commands.registerCommand('rfcode.openTerminal', () => {
       const term = vscode.window.createTerminal({ name: 'rfcode', cwd: workspaceCwd() });
       term.show();

@@ -251,7 +251,8 @@ function cliHooks(state) {
       const summary = name === 'read_file' ? `${lines.length} linhas` : lines[0].slice(0, 140) + (lines.length > 1 ? ` (+${lines.length - 1} linhas)` : '');
       console.log(`    ${T.muted('⎿ ' + summary)}`);
     },
-    onRetry(msg) { spin.stop(); console.log(`  ${T.amber('↻')} ${T.muted(msg)}`); },
+    // novas tentativas e trocas de modelo ficam ocultas (o agente guarda no log); /detalhes mostra
+    onRetry(msg) { if (!state.showDetails) return; spin.stop(); console.log(`  ${T.amber('↻')} ${T.muted(msg)}`); },
     // modo auto: mostra o modelo só quando muda (o aviso de troca por limite já sai no onRetry)
     onModel(m) { if (m !== state.autoShown) { state.autoShown = m; spin.stop(); console.log(`  ${T.muted('auto · ' + m)}`); spin.start('pensando'); } },
     onError(msg) { spin.stop(); endText(); console.log(`\n  ${T.red('✗')} ${T.red(msg)}`); },
@@ -344,6 +345,24 @@ async function handleCommand(state, cfg, line) {
         const r = require('../lib/commands').missionCommand(arg, { cwd: agent.cwd, model: agent.selectedModel, aliasUsed: raw, start: (m) => require('../lib/mission').startDetached(agent.cwd, m, { script: __filename }) });
         console.log(r.text.replace(/^/gm, '  '));
       } catch (e) { console.log(c.red('  ' + e.message)); }
+      return null;
+    }
+    case 'orquestra': {
+      try {
+        const { openBrowser } = require('../lib/orquestra-server');
+        if (!state.orquestra) {
+          const { Orquestra } = require('../lib/orquestra');
+          const { startOrquestra } = require('../lib/orquestra-server');
+          // pastas com espaço: entre aspas
+          const pastas = arg ? [...arg.matchAll(/"([^"]+)"|(\S+)/g)].map((m) => path.resolve(agent.cwd, m[1] || m[2])) : [agent.cwd];
+          state.orquestra = await startOrquestra({ pastas, version: VERSION, orquestra: new Orquestra({ apiKey: agent.apiKey, model: agent.selectedModel, effort: agent.effort }) });
+          process.once('exit', () => { try { state.orquestra.orquestra.flush(); } catch { /* sem disco */ } });
+          for (const a of state.orquestra.avisos) console.log(`  ${c.yellow('!')} ${a}`);
+        }
+        console.log(`  ${c.bold('Orquestra')} ${c.dim('(sessões em paralelo ou em sequência, num quadro):')} ${T.lime(state.orquestra.url)}`);
+        console.log(c.dim('  O link tem um token de acesso: não compartilhe. Ela fica no ar enquanto este terminal estiver aberto.'));
+        openBrowser(state.orquestra.url);
+      } catch (e) { console.log(c.red(`  Não consegui abrir a orquestra: ${e.message}`)); }
       return null;
     }
     case 'entender': return { send: require('../lib/commands').UNDERSTAND_PROMPT(arg) };
@@ -456,6 +475,13 @@ async function handleCommand(state, cfg, line) {
       agent.autoApprove = !agent.autoApprove;
       console.log(`Aprovação automática: ${agent.autoApprove ? c.green('ligada') : c.yellow('desligada')}`);
       return;
+    case 'detalhes': {
+      const r = require('../lib/commands').detailsCommand(arg, { on: state.showDetails, notices: agent.notices });
+      state.showDetails = r.on;
+      const c2 = loadConfig(); c2.showDetails = r.on; saveConfig(c2);
+      console.log(r.text);
+      return;
+    }
     case 'think':
       state.showThinking = !state.showThinking;
       console.log(`Mostrar raciocínio: ${state.showThinking ? 'sim' : 'não'}`);
@@ -502,6 +528,49 @@ async function handleCommand(state, cfg, line) {
   return null;
 }
 
+// ---------- visão: câmera do celular + modelos de visão da NVIDIA ----------
+async function visionCommand(args, cfg) {
+  const vision = require('../lib/vision');
+  const opt = (...names) => { for (const n of names) { const i = args.indexOf(n); if (i >= 0 && args[i + 1]) return args[i + 1]; } return null; };
+  if (args.includes('--modelos')) {
+    console.log('Modelos de visão (tentados nesta ordem; o primeiro que responder é usado):');
+    for (const [id, desc] of vision.VISION_MODELS) console.log(`  ${id.padEnd(42)} ${desc}`);
+    return;
+  }
+  let key = cfg.apiKey || process.env.NVIDIA_API_KEY || '';
+  if (!key) key = await askApiKey(cfg);
+  const modelo = opt('--modelo', '--model');
+  const models = modelo ? [modelo, ...vision.VISION_MODELS.map((m) => m[0]).filter((m) => m !== modelo)] : undefined;
+  const server = new vision.VisionServer({
+    getKey: () => key,
+    models,
+    certDir: path.dirname(CONFIG_FILE),
+    onAsk: (r) => {
+      const hora = new Date().toLocaleTimeString('pt-BR');
+      if (r.error) console.log(`\n[${hora}] erro: ${r.error}`);
+      else console.log(`\n[${hora}] ${r.question ? `"${r.question}" ` : ''}${r.model.split('/').pop()} · ${(r.ms / 1000).toFixed(1)} s\n${r.answer.replace(/^/gm, '  ')}`);
+    },
+  });
+  const urls = await server.start(Number(opt('--porta', '--port')) || vision.DEFAULT_PORT);
+  if (!urls.length) { console.log('Nenhuma rede local encontrada. Conecte o PC ao Wi-Fi.'); process.exit(1); }
+  console.log(`\nrfcode visão: aponte a câmera do celular para este QR code (mesmo Wi-Fi do PC).\n`);
+  console.log(vision.qrTerminal(urls[0].url));
+  console.log(`\n  ${urls[0].url}`);
+  for (const u of urls.slice(1)) console.log(`  ${u.url}  (${u.name})`);
+  console.log(`
+Na primeira vez o celular avisa que a conexão não é particular: o certificado é do seu próprio PC.
+Toque em "Avançado" e depois em "Continuar" (no iPhone: "Mostrar detalhes" > "visitar o site"),
+e permita a câmera. Depois:
+  - botão verde: responde o que a câmera está vendo (questão, exercício, texto, objeto)
+  - campo de texto ou microfone: faz uma pergunta sobre a imagem
+  - Auto: responde sozinho quando você para a câmera numa pergunta nova
+  - Voz: lê a resposta em voz alta
+Se o celular não abrir a página, libere o Node.js no firewall para redes privadas.
+Ctrl+C para desligar.`);
+  await new Promise((resolve) => process.on('SIGINT', () => { server.stop(); console.log('\nVisão desligada.'); resolve(); }));
+  process.exit(0);
+}
+
 // ---------- main ----------
 async function main() {
   const argv = process.argv.slice(2);
@@ -530,6 +599,10 @@ async function main() {
     sched.recordRun(job.id, { inicio, fim: new Date().toISOString(), ok: !failed, saida: out });
     notifyDone(failed ? 'rfcode: tarefa agendada falhou' : 'rfcode: tarefa agendada concluída', job.task.slice(0, 120));
     process.exit(failed ? 1 : 0);
+  }
+  if (argv[0] === 'visao' || argv[0] === 'visão' || argv[0] === 'vision') {
+    await visionCommand(argv.slice(1), cfg);
+    return;
   }
   if (argv[0] === 'agendar' || argv[0] === 'agendamentos') {
     const r = require('../lib/commands').scheduleCommand(argv.slice(1).join(' '), { cwd: process.cwd(), model: cfg.model, srcRoot: path.join(__dirname, '..') });
@@ -570,6 +643,33 @@ async function main() {
     process.exit(0);
   }
 
+  // orquestra: o quadro no navegador com várias sessões em paralelo ou em sequência
+  if (['orquestra', 'quadro', 'canvas', '--orquestra'].includes(argv[0])) {
+    const { Orquestra } = require('../lib/orquestra');
+    const { startOrquestra, openBrowser, DEFAULT_PORT } = require('../lib/orquestra-server');
+    const args = argv.slice(1);
+    const opt = (name) => { const i = args.indexOf(name); if (i < 0) return null; const v = args[i + 1]; args.splice(i, 2); return v; };
+    const flag = (name) => { const i = args.indexOf(name); if (i < 0) return false; args.splice(i, 1); return true; };
+    const port = Number(opt('--porta') || opt('--port')) || DEFAULT_PORT;
+    const rede = flag('--rede');
+    const noOpen = flag('--sem-navegador') || flag('--no-open');
+    const home = require('os').homedir();
+    const pastas = args.length ? args : (path.resolve(process.cwd()) !== path.resolve(home) ? [process.cwd()] : []);
+    const apiKey = cfg.apiKey || process.env.NVIDIA_API_KEY;
+    rl.close(); // sem prompt: Ctrl+C fecha a orquestra
+    const r = await startOrquestra({ pastas, port, rede, version: VERSION, orquestra: new Orquestra({ apiKey, model: cfg.model, effort: cfg.effort }) });
+    console.log(`\n  ${T.bold('rfcode orquestra')} ${T.muted(`(quadro "${r.quadro.nome}", ${r.quadro.repos.length} repositório${r.quadro.repos.length === 1 ? '' : 's'})`)}`);
+    console.log(`  ${T.lime(r.url)}`);
+    for (const a of r.avisos) console.log(`  ${T.amber('!')} ${a}`);
+    console.log(T.muted(`  O link tem um token de acesso: não compartilhe.${rede ? ' Aberto na rede local.' : ' Só este computador acessa.'}`));
+    console.log(T.muted('  Ctrl+C fecha a orquestra (as sessões em andamento param; os quadros ficam salvos).\n'));
+    if (!noOpen) openBrowser(r.url);
+    const bye = () => { r.orquestra.stopAll(); r.server.stop(); process.exit(0); };
+    process.on('SIGINT', bye);
+    process.on('SIGTERM', bye);
+    return;
+  }
+
   if (argv.includes('--help') || argv.includes('-h')) {
     console.log(`rfcode ${VERSION}
 Agente de IA para o terminal, com os modelos de build.nvidia.com.
@@ -583,6 +683,11 @@ Uso:
       --max-steps <n>      limita o número de ações
       git diff | rfcode -p "revise"   o que chega pela entrada padrão vira contexto
   rfcode missao "objetivo" --horas 24   tarefa longa e autônoma em segundo plano (status, parar, retomar)
+  rfcode orquestra [pastas...]   quadro no navegador: várias sessões em paralelo ou em sequência,
+      --porta <n>  --rede  --sem-navegador   ligadas em fluxo, em um ou mais repositórios
+  rfcode visao             abre a câmera do celular (QR code) e responde o que ela vê com IA
+      --modelo <id>        modelo de visão preferido (--modelos lista os gratuitos da NVIDIA)
+      --porta <n>          porta do servidor (padrão 7443)
   rfcode -c, --continue    retoma a última conversa desta pasta
   rfcode --key             configura uma nova API key da NVIDIA
   rfcode --model <id>      usa outro modelo (ex.: groq:llama-3.3-70b-versatile, ollama:qwen3:8b)
@@ -655,7 +760,7 @@ API key: ${CONFIG_FILE} ou variável de ambiente NVIDIA_API_KEY`);
     console.log(`  ${T.amber('!')} ${T.muted(`falta a API key de ${providers.PROVIDERS[provider].name}: use /provider ${provider}`)}`);
   }
 
-  const state = { agent: new Agent({ apiKey, model, effort, cwd: process.cwd(), saveSession: true }), showThinking: false };
+  const state = { agent: new Agent({ apiKey, model, effort, cwd: process.cwd(), saveSession: true }), showThinking: false, showDetails: !!cfg.showDetails };
   liveAgent = state.agent;
   const hooks = cliHooks(state);
   // depois de cada resposta, mensagens que ficaram na fila (ex.: depois de Ctrl+C) viram o próximo pedido

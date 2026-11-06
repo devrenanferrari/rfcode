@@ -1,8 +1,8 @@
 {
   "name": "rfcode",
   "displayName": "rfcode",
-  "description": "Agente de IA para VS Code com os modelos gratuitos de build.nvidia.com. Edita código, executa testes, pesquisa na web, gera documentos e vídeos e automatiza tarefas no Windows.",
-  "version": "1.18.1",
+  "description": "Agente de IA para VS Code com os modelos gratuitos de build.nvidia.com. Edita código, executa testes, orquestra várias sessões em paralelo num quadro, pesquisa na web, gera documentos e vídeos e automatiza tarefas no Windows.",
+  "version": "1.21.1",
   "publisher": "renanferrari",
   "license": "MIT",
   "repository": {
@@ -38,6 +38,9 @@
     "pptx",
     "video",
     "automation",
+    "orchestration",
+    "multi-agent",
+    "canvas",
     "portugues",
     "brasil"
   ],
@@ -120,6 +123,23 @@
         "category": "rfcode"
       },
       {
+        "command": "rfcode.visao",
+        "title": "Visão: câmera do celular",
+        "icon": "$(eye)",
+        "category": "rfcode"
+      },
+      {
+        "command": "rfcode.visaoStop",
+        "title": "Desligar câmera do celular",
+        "category": "rfcode"
+      },
+      {
+        "command": "rfcode.orquestra",
+        "title": "Orquestra: várias sessões em paralelo num quadro",
+        "icon": "$(type-hierarchy-sub)",
+        "category": "rfcode"
+      },
+      {
         "command": "rfcode.setProvider",
         "title": "Configurar provedor de modelos",
         "category": "rfcode"
@@ -155,9 +175,14 @@
           "group": "navigation@2"
         },
         {
-          "command": "rfcode.remote",
+          "command": "rfcode.orquestra",
           "when": "view == rfcode.chat",
           "group": "navigation@3"
+        },
+        {
+          "command": "rfcode.remote",
+          "when": "view == rfcode.chat",
+          "group": "navigation@4"
         }
       ],
       "commandPalette": [

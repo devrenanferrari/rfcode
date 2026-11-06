@@ -49,13 +49,13 @@ async function withServer(handler, fn) {
 
 test('candidatos do auto: sempre do mais forte ao mais fraco, entre todos os provedores com chave', () => {
   const nv = providers.autoCandidates({ keys: { nvidia: 'x' } });
-  assert.strictEqual(nv[0], 'z-ai/glm-5.3');
+  assert.strictEqual(nv[0], 'mistralai/mistral-large-4-1t-a52b');
   assert.ok(nv.every((m) => !m.includes(':')), 'só NVIDIA quando só ela tem chave');
-  assert.ok(nv.indexOf('openai/gpt-oss-20b') > nv.indexOf('nvidia/nemotron-3-super-120b-a12b'), 'os fracos ficam por último');
+  assert.ok(nv.indexOf('openai/gpt-oss-20b') > nv.indexOf('poolside/laguna-xs-2.1'), 'os fracos ficam por último');
   // um provedor com modelo mais forte passa na frente da NVIDIA
   const mixed = providers.autoCandidates({ keys: { nvidia: 'x', anthropic: 'y', groq: 'z' } });
   assert.strictEqual(mixed[0], 'anthropic:claude-sonnet-5-5');
-  assert.strictEqual(mixed[1], 'z-ai/glm-5.3');
+  assert.strictEqual(mixed[1], 'mistralai/mistral-large-4-1t-a52b');
   assert.ok(mixed.indexOf('groq:llama-3.3-70b-versatile') > mixed.indexOf('groq:openai/gpt-oss-120b'));
   assert.ok(!providers.autoCandidates({ keys: { openrouter: 'x' } }).includes('openrouter:openrouter/auto'), 'roteador de terceiros fica fora');
   assert.deepStrictEqual(providers.autoCandidates({ autoModels: ['groq:x', 'nvidia/y'], keys: { nvidia: 'k' } }), ['nvidia/y'], 'lista manual, sem os que não têm chave');
@@ -114,6 +114,40 @@ test('auto: limite de pedidos troca na hora para o próximo e volta ao melhor qu
   });
 });
 
+test('auto: modelo que aceita o pedido e não responde é trocado na hora, sem esperar minutos', async () => {
+  const seen = [];
+  const srv = http.createServer((q, r) => {
+    let b = '';
+    q.on('data', (d) => (b += d));
+    q.on('end', () => {
+      const m = JSON.parse(b).model;
+      seen.push(m);
+      if (m === 'a') return; // pendurado, como o NVIDIA às vezes fica
+      r.setHeader('content-type', 'text/event-stream');
+      r.write(`data: ${JSON.stringify({ choices: [{ delta: { content: `ok de ${m}` } }] })}\n\n`);
+      r.end('data: [DONE]\n\n');
+    });
+  });
+  await new Promise((ok) => srv.listen(0, ok));
+  try {
+    fs.writeFileSync(path.join(HOME, 'config.json'), JSON.stringify({ baseUrls: { custom: `http://127.0.0.1:${srv.address().port}/v1` }, autoModels: ['custom:a', 'custom:b'] }));
+    const { Agent } = require('../lib/agent');
+    const ag = new Agent({ model: 'auto', cwd: HOME });
+    ag.firstResponseMs = 600;
+    const retries = [], texts = [], errors = [];
+    const t0 = Date.now();
+    await ag.send('oi', { ...baseHooks(), onRetry: (m) => retries.push(m), onText: (t) => texts.push(t), onError: (e) => errors.push(e) });
+    assert.deepStrictEqual(errors, []);
+    assert.deepStrictEqual(seen, ['a', 'b'], 'troca sem tentar o modelo travado de novo');
+    assert.strictEqual(texts.join(''), 'ok de b');
+    assert.ok(retries.some((m) => /a não começou a responder.*modo auto seguiu com custom:b/.test(m)), retries.join('\n'));
+    assert.ok(Date.now() - t0 < 10000);
+  } finally {
+    srv.closeAllConnections();
+    srv.close();
+  }
+});
+
 test('auto: todos no limite espera o primeiro liberar em vez de desistir', async () => {
   let calls = 0;
   await withServer(() => (++calls <= 2 ? { status: 429, json: { error: { message: 'rate limit' } } } : null), async ({ home, writeConfig }) => {
@@ -162,6 +196,7 @@ test('auto: modelo aposentado (410) sai da lista e o próximo assume, sem parar 
     assert.deepStrictEqual(errors, []);
     assert.strictEqual(texts.join(''), 'ok de b');
     assert.ok(retries.some((m) => /custom:a não está mais disponível.*modo auto seguiu com custom:b/.test(m)));
+    assert.ok(ag.notices.some((n) => /não está mais disponível/.test(n.text) && n.at > 0), 'o aviso fica guardado para o /detalhes');
     await ag.send('de novo', h);
     assert.deepStrictEqual(bodies.map((b) => b.model), ['a', 'b', 'b'], 'não volta a tentar o aposentado');
   });
